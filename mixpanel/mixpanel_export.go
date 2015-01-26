@@ -23,14 +23,16 @@ var (
 )
 
 type MixpanelExport struct {
-	endpoint  string
-	version   string
-	apiKey    string
-	apiSecret string
+	endpoint   string
+	version    string
+	apiKey     string
+	apiSecret  string
+	httpGetter func(string) (*http.Response, error)
+	nowGetter  func() time.Time
 }
 
 func NewMixpanelExport() *MixpanelExport {
-	m := MixpanelExport{"https://data.mixpanel.com/api", "2.0", *apikey, *apisecret}
+	m := MixpanelExport{"https://data.mixpanel.com/api", "2.0", *apikey, *apisecret, http.Get, time.Now}
 	return &m
 }
 
@@ -72,7 +74,7 @@ func (m *MixpanelExport) ComputeSig(params map[string]interface{}) (string, erro
 
 func (m *MixpanelExport) Request(method string, params map[string]interface{}) ([]byte, error) {
 	params["api_key"] = m.apiKey
-	expireTime := time.Now().Add(*timeout)
+	expireTime := m.nowGetter().Add(*timeout)
 	params["expire"] = expireTime.Unix()
 	params["format"] = "json"
 
@@ -93,7 +95,7 @@ func (m *MixpanelExport) Request(method string, params map[string]interface{}) (
 	}
 	url := fmt.Sprintf("%s/%s/%s/?%s", m.endpoint, m.version, method, values.Encode())
 	log.Println(url)
-	resp, err := http.Get(url)
+	resp, err := m.httpGetter(url)
 	if err != nil {
 		return nil, err
 	}
