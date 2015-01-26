@@ -30,7 +30,7 @@ type MixpanelExport struct {
 }
 
 func NewMixpanelExport() *MixpanelExport {
-	m := MixpanelExport{"https://data.mixpanel.com/api", "2.0", apikey, apisecret}
+	m := MixpanelExport{"https://data.mixpanel.com/api", "2.0", *apikey, *apisecret}
 	return &m
 }
 
