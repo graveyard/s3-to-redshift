@@ -14,8 +14,13 @@ import (
 	"github.com/segmentio/go-env"
 )
 
+type DBExecCloser interface {
+	Close() error
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
 type Redshift struct {
-	*sql.DB
+	DBExecCloser
 	AccessId  string
 	SecretKey string
 }
