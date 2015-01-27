@@ -43,8 +43,15 @@ WHERE c.relkind = 'r'::char
     AND c.relname = '%s'  -- Replace with table name
     AND f.attnum > 0 ORDER BY f.attnum`
 
+type DBQueryCopyToCloser interface {
+	Close() error
+	Query(pg.Factory, string, ...interface{}) (*pg.Result, error)
+	CopyTo(io.WriteCloser, string, ...interface{}) (*pg.Result, error)
+}
+
 type DB struct {
-	*pg.DB
+	DBQueryCopyToCloser
+	s3Writer func(string, io.Reader, int64) error
 }
 
 func NewDB() *DB {
@@ -57,7 +64,7 @@ func NewDB() *DB {
 		Database: *dbname,
 		SSL:      true,
 	}
-	return &DB{pg.Connect(&opt)}
+	return &DB{pg.Connect(&opt), pathio.WriteReader}
 }
 
 type ColInfo struct {
@@ -99,7 +106,7 @@ func S3Filename(prefix string, table string) string {
 	return prefix + table + ".txt.gz"
 }
 
-func (db *DB) DumpTableToWriter(table string, w io.WriteCloser, format string, delim rune) error {
+func (db *DB) dumpTableTowriter(table string, w io.WriteCloser, format string, delim rune) error {
 	cmd := fmt.Sprintf("COPY %s TO STDOUT WITH (FORMAT %s, DELIMITER '%c', HEADER 0)", table, format, delim)
 	log.Print(cmd)
 	_, err := db.CopyTo(w, cmd)
@@ -107,7 +114,7 @@ func (db *DB) DumpTableToWriter(table string, w io.WriteCloser, format string, d
 }
 
 // TODO: include foreign key relations
-func (db *DB) GetTableSchema(table string, namespace string) (TableSchema, error) {
+func (db *DB) GetTableSchema(table, namespace string) (TableSchema, error) {
 	if namespace == "" {
 		namespace = "public"
 	}
@@ -140,10 +147,10 @@ func (db *DB) GetTableSchemas(tables []string, namespace string) (map[string]Tab
 
 func (db *DB) DumpTableToS3(table string, s3file string) error {
 	buf := nopCloserBuffer{new(bytes.Buffer)}
-	if err := db.DumpTableToWriter(table, gzip.NewWriter(buf), "csv", '|'); err != nil {
+	if err := db.dumpTableTowriter(table, gzip.NewWriter(buf), "csv", '|'); err != nil {
 		return err
 	}
-	return pathio.WriteReader(s3file, buf, int64(buf.Len()))
+	return db.s3Writer(s3file, buf, int64(buf.Len()))
 }
 
 func (db *DB) DumpTablesToS3(tables []string, s3_prefix string) error {
