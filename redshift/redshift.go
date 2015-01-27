@@ -62,7 +62,7 @@ func (r *Redshift) LogAndExec(cmd string, creds bool) (sql.Result, error) {
 
 func (r *Redshift) CopyJsonDataFromS3(table, file, jsonpathsFile, awsRegion string) error {
 	copyCmd := fmt.Sprint(
-		"COPY ", table, " FROM '", file, "' WITH ",
+		"COPY ", table, " FROM '", file, "' WITH",
 		" json '", jsonpathsFile,
 		"' region '", awsRegion,
 		"' timeformat 'epochsecs'",
@@ -75,14 +75,14 @@ func (r *Redshift) CopyGzipCsvDataFromS3(table, file, awsRegion string, delimite
 	copyCmd := fmt.Sprint(
 		"COPY ", table, " FROM '", file, "' WITH ",
 		"REGION '", awsRegion, "'",
-		"GZIP CSV DELIMITER '", string(delimiter), "'",
+		" GZIP CSV DELIMITER '", string(delimiter), "'",
 		" IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON")
 	_, err := r.LogAndExec(copyCmd, true)
 	return err
 }
 
 // TODO: explore adding distkey.
-func ColumnString(c *postgres.ColInfo) string {
+func columnString(c *postgres.ColInfo) string {
 	attributes := []string{}
 	constraints := []string{}
 	if c.DefaultVal != "" {
@@ -102,7 +102,7 @@ func (r *Redshift) CreateTable(name string, ts postgres.TableSchema) error {
 	colStrings := []string{}
 	sort.Sort(ts)
 	for _, ci := range ts {
-		colStrings = append(colStrings, ColumnString(ci))
+		colStrings = append(colStrings, columnString(ci))
 	}
 	cmd := fmt.Sprintf("CREATE TABLE %s (%s)", name, strings.Join(colStrings, ", "))
 	_, err := r.LogAndExec(cmd, false)
