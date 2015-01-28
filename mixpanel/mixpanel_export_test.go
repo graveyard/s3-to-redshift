@@ -15,14 +15,14 @@ type marshalTestPair struct {
 	strvalue string
 }
 
-func TestStringOrJsonMarshal(t *testing.T) {
+func TestStringOrJSONMarshal(t *testing.T) {
 	tests := []marshalTestPair{
 		{"teststring", "teststring"},
 		{map[string]string{"key1": "val1", "key2:": "val2"}, "{\"key1\":\"val1\",\"key2:\":\"val2\"}"},
 		{[]string{"arrary", "of", "strings"}, "[\"arrary\",\"of\",\"strings\"]"},
 	}
 	for _, pair := range tests {
-		v, err := StringOrJsonMarshal(pair.value)
+		v, err := StringOrJSONMarshal(pair.value)
 		assert.NoError(t, err)
 		assert.Equal(t, pair.strvalue, v)
 	}
@@ -35,13 +35,13 @@ func TestComputeSig(t *testing.T) {
 		"events":  []string{"event1", "event2"},
 		"param1":  "value1",
 	}
-	m, exp := MixpanelExport{apiSecret: "TESTMIXPANELAPISECRET"}, "1beb8d4f61da24302844e252a8ff6e75"
-	sig, err := m.ComputeSig(params)
+	m, exp := Export{apiSecret: "TESTMIXPANELAPISECRET"}, "1beb8d4f61da24302844e252a8ff6e75"
+	sig, err := m.computeSig(params)
 	assert.NoError(t, err)
 	assert.Equal(t, exp, sig)
 }
 
-func mockHttpGet(url string) (*http.Response, error) {
+func mockHTTPGet(url string) (*http.Response, error) {
 	reader := bytes.NewReader([]byte(url))
 	mockbody := ioutil.NopCloser(reader)
 	return &http.Response{Body: mockbody}, nil
@@ -52,7 +52,7 @@ func mockTimeGetter() time.Time {
 }
 
 func TestRequest(t *testing.T) {
-	m := MixpanelExport{"https://data.mixpanel.com/api", "2.0", "apikey", "apisecret", mockHttpGet, mockTimeGetter}
+	m := Export{"https://data.mixpanel.com/api", "2.0", "apikey", "apisecret", mockHTTPGet, mockTimeGetter}
 	params := map[string]interface{}{
 		"events": []string{"event1", "event2"},
 		"param1": "value1",

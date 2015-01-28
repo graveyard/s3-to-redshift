@@ -32,7 +32,7 @@ func main() {
 	exportFile := fmt.Sprintf("%s/%s", *mixpanelExportDir, *mixpanelExportDate)
 
 	if *exportFromMixpanel {
-		mixpanelExport := mixpanel.NewMixpanelExport()
+		mixpanelExport := mixpanel.NewExport()
 		log.Println("Exporting mixpanel data for", *mixpanelExportDate)
 		params := map[string]interface{}{
 			"event":     strings.Split(*mixpanelEvents, ","),
@@ -54,7 +54,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := r.CopyJsonDataFromS3(*redshiftTable, exportFile, *jsonpathsFile, awsRegion); err != nil {
+		if err := r.CopyJSONDataFromS3(*redshiftTable, exportFile, *jsonpathsFile, awsRegion); err != nil {
 			log.Fatal(err)
 		}
 		if err := r.VacuumAnalyze(); err != nil {

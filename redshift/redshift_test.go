@@ -20,14 +20,14 @@ func (m *mockSQLDB) Close() error {
 	return nil
 }
 
-func TestCopyJsonDataFromS3(t *testing.T) {
+func TestCopyJSONDataFromS3(t *testing.T) {
 	table, file, jsonpathsFile, awsRegion := "tablename", "s3://path", "s3://jsonpathsfile", "testregion"
 	exp := fmt.Sprintf("COPY %s FROM '%s' WITH json '%s' region '%s' timeformat 'epochsecs' COMPUPDATE ON",
 		table, file, jsonpathsFile, awsRegion)
 	exp += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CopyJsonDataFromS3(table, file, jsonpathsFile, awsRegion)
+	err := mockrs.CopyJSONDataFromS3(table, file, jsonpathsFile, awsRegion)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{exp}, cmds)
 }
@@ -54,7 +54,7 @@ func TestCreateTable(t *testing.T) {
 	exp := "CREATE TABLE tablename (field1 type1  NOT NULL, field2 type2 SORTKEY PRIMARY KEY, field3 type3 DEFAULT defaultval3 )"
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CreateTable("tablename", ts)
+	err := mockrs.createTable("tablename", ts)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{exp}, cmds)
 }
