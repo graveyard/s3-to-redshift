@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/pg.v2"
 )
 
@@ -54,37 +54,23 @@ func TestDumpTableToS3(t *testing.T) {
 	}
 	copycmds, querycmds := []string{}, []string{}
 	mockp := &DB{mockPgDB{&copycmds, &querycmds}, mockS3Writer}
-	if err := mockp.DumpTableToS3("tablename", "s3file"); err != nil {
-		t.Fatalf("Unexpected error %s while calling DumpTableToS3", err.Error())
-	}
+	assert.NoError(t, mockp.DumpTableToS3("tablename", "s3file"))
 	expcmds := []string{"COPY tablename TO STDOUT WITH (FORMAT csv, DELIMITER '|', HEADER 0)"}
-	if !reflect.DeepEqual(copycmds, expcmds) {
-		t.Fatalf("Unexpected queries during RefreshTables().\nExpected: %v\n  Actual: %v", expcmds, copycmds)
-	}
-	if *file != "s3file" {
-		t.Errorf("S3File path does not match. Expected: %s, Actual: %s", "s3file", *file)
-	}
-	if *out != "test copy output" {
-		t.Errorf("Copy output does not match. Expected: %s, Actual: %s", "test copy output", *out)
-	}
+	assert.Equal(t, expcmds, copycmds)
+	assert.Equal(t, "s3file", *file)
+	assert.Equal(t, "test copy output", *out)
 }
 
 func TestGetTableSchema(t *testing.T) {
 	copycmds, querycmds := []string{}, []string{}
 	mockp := &DB{mockPgDB{&copycmds, &querycmds}, nil}
 	ts, err := mockp.GetTableSchema("tablename", "namespace")
-	if err != nil {
-		t.Fatalf("Unexpected error %s while calling GetTableSchema", err.Error())
-	}
+	assert.NoError(t, err)
 	expcmds := []string{fmt.Sprintf(schemaQueryFormat, "namespace", "tablename")}
-	if !reflect.DeepEqual(querycmds, expcmds) {
-		t.Fatalf("Unexpected queries during RefreshTables().\nExpected: %v\n  Actual: %v", expcmds, querycmds)
-	}
+	assert.Equal(t, expcmds, querycmds)
 	expts := TableSchema{
 		&ColInfo{Ordinal: 1, Name: "colname1", ColType: "coltype1", DefaultVal: "defaultval1", NotNull: true, PrimaryKey: true},
 		&ColInfo{Ordinal: 2, Name: "colname2", ColType: "coltype2", DefaultVal: "", NotNull: false, PrimaryKey: false},
 	}
-	if !reflect.DeepEqual(ts, expts) {
-		t.Fatalf("TableSchema does not match.\nExpected: %+v \n Actual: %+v", expts, ts)
-	}
+	assert.Equal(t, expts, ts)
 }
