@@ -10,7 +10,7 @@ import (
 
 	"github.com/clever/pathio"
 	"github.com/facebookgo/errgroup"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // Postgres driver.
 	"gopkg.in/pg.v2"
 )
 
@@ -43,17 +43,19 @@ WHERE c.relkind = 'r'::char
     AND c.relname = '%s'  -- Replace with table name
     AND f.attnum > 0 ORDER BY f.attnum`
 
-type DBQueryCopyToCloser interface {
+type dbQueryCopyToCloser interface {
 	Close() error
 	Query(pg.Factory, string, ...interface{}) (*pg.Result, error)
 	CopyTo(io.WriteCloser, string, ...interface{}) (*pg.Result, error)
 }
 
+// DB is a struct that is used to perform operations on a postgreSQL database.
 type DB struct {
-	DBQueryCopyToCloser
+	dbQueryCopyToCloser
 	s3Writer func(string, io.Reader, int64) error
 }
 
+// NewDB returns a DB struct initialized based on flags.
 func NewDB() *DB {
 	flag.Parse()
 	opt := pg.Options{
@@ -67,6 +69,7 @@ func NewDB() *DB {
 	return &DB{pg.Connect(&opt), pathio.WriteReader}
 }
 
+// ColInfo is a struct that contains information about a column in a postgreSQL database.
 type ColInfo struct {
 	Ordinal    int
 	Name       string
@@ -76,8 +79,10 @@ type ColInfo struct {
 	PrimaryKey bool
 }
 
+// TableSchema is a type which models the schema of a postgreSQL table.
 type TableSchema []*ColInfo
 
+// New adds a pointer to a new ColInfo object to the TableSchema and returns it.
 func (ts *TableSchema) New() interface{} {
 	ci := &ColInfo{}
 	*ts = append(*ts, ci)
@@ -102,6 +107,7 @@ type nopCloserBuffer struct {
 
 func (nopCloserBuffer) Close() error { return nil }
 
+// S3Filename returns the s3 filename used for storing the table data.
 func S3Filename(prefix string, table string) string {
 	return prefix + table + ".txt.gz"
 }
@@ -113,6 +119,8 @@ func (db *DB) dumpTableTowriter(table string, w io.WriteCloser, format string, d
 	return err
 }
 
+// GetTableSchema returns the schema for a postgresSQL table by performing a query on the postgreSQL
+// internal tables.
 // TODO: include foreign key relations
 func (db *DB) GetTableSchema(table, namespace string) (TableSchema, error) {
 	if namespace == "" {
@@ -127,6 +135,8 @@ func (db *DB) GetTableSchema(table, namespace string) (TableSchema, error) {
 	return schema, nil
 }
 
+// GetTableSchemas returns a map from a tablename to its schema. Gets schemas for different tables
+// in parallel.
 func (db *DB) GetTableSchemas(tables []string, namespace string) (map[string]TableSchema, error) {
 	group := new(errgroup.Group)
 	tsmap := map[string]TableSchema{}
@@ -145,6 +155,8 @@ func (db *DB) GetTableSchemas(tables []string, namespace string) (map[string]Tab
 	return tsmap, err
 }
 
+// DumpTableToS3 dumps a single table to S3 by executing a COPY TO query and writing the gzipped
+// CSV data to an S3 file.
 func (db *DB) DumpTableToS3(table string, s3file string) error {
 	buf := nopCloserBuffer{new(bytes.Buffer)}
 	if err := db.dumpTableTowriter(table, gzip.NewWriter(buf), "csv", '|'); err != nil {
@@ -153,12 +165,13 @@ func (db *DB) DumpTableToS3(table string, s3file string) error {
 	return db.s3Writer(s3file, buf, int64(buf.Len()))
 }
 
-func (db *DB) DumpTablesToS3(tables []string, s3_prefix string) error {
+// DumpTablesToS3 dumps multiple tables to s3 in parallel.
+func (db *DB) DumpTablesToS3(tables []string, s3prefix string) error {
 	group := new(errgroup.Group)
 	for _, table := range tables {
 		group.Add(1)
 		go func(table string) {
-			if err := db.DumpTableToS3(table, S3Filename(s3_prefix, table)); err != nil {
+			if err := db.DumpTableToS3(table, S3Filename(s3prefix, table)); err != nil {
 				group.Error(err)
 			}
 			group.Done()

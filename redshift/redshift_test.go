@@ -21,23 +21,23 @@ func (m *mockSQLDB) Close() error {
 	return nil
 }
 
-func TestCopyJsonDataFromS3(t *testing.T) {
+func TestCopyJSONDataFromS3(t *testing.T) {
 	table, file, jsonpathsFile, awsRegion := "tablename", "s3://path", "s3://jsonpathsfile", "testregion"
 	exp := fmt.Sprintf("COPY %s FROM '%s' WITH json '%s' region '%s' timeformat 'epochsecs' COMPUPDATE ON",
 		table, file, jsonpathsFile, awsRegion)
 	exp += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CopyJsonDataFromS3(table, file, jsonpathsFile, awsRegion)
+	err := mockrs.CopyJSONDataFromS3(table, file, jsonpathsFile, awsRegion)
 	if err != nil {
-		t.Error("Unexpected error %s while during CopyJsonDataFromS3(). Expected query: %s", err.Error(), exp)
+		t.Error("Unexpected error %s while during CopyJSONDataFromS3(). Expected query: %s", err.Error(), exp)
 	}
 	if len(cmds) == 0 {
-		t.Fatalf("Expected query \"%s\" not executed during CopyJsonDataFromS3().", exp)
+		t.Fatalf("Expected query \"%s\" not executed during CopyJSONDataFromS3().", exp)
 	}
 	if cmds[0] != exp {
 		log.Println(cmds[0])
-		t.Fatalf("Unexpected query \"%s\" executed during CopyJsonDataFromS3. Expected \"%s\"", cmds[0], exp)
+		t.Fatalf("Unexpected query \"%s\" executed during CopyJSONDataFromS3. Expected \"%s\"", cmds[0], exp)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestCreateTable(t *testing.T) {
 	exp := "CREATE TABLE tablename (field1 type1  NOT NULL, field2 type2 SORTKEY PRIMARY KEY, field3 type3 DEFAULT defaultval3 )"
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CreateTable("tablename", ts)
+	err := mockrs.createTable("tablename", ts)
 	if err != nil {
 		t.Error("Unexpected error %s while during CreateTable(). Expected query: %s", err.Error(), exp)
 	}

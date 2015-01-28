@@ -12,16 +12,16 @@ import (
 
 var (
 	// TODO: include flag validation
-	awsRegion  = env.MustGet("AWS_REGION")
-	s3prefix   = flag.String("s3prefix", "", "s3 path to be used as a prefix for temporary storage of postgres data")
-	tables_csv = flag.String("tables", "", "Tables to copy as CSV")
-	dumppg     = flag.Bool("dumppostgres", true, "Whether to dump postgres")
-	updateRS   = flag.Bool("updateredshift", true, "Whether to replace redshift")
+	awsRegion = env.MustGet("AWS_REGION")
+	s3prefix  = flag.String("s3prefix", "", "s3 path to be used as a prefix for temporary storage of postgres data")
+	tablesCSV = flag.String("tables", "", "Tables to copy as CSV")
+	dumppg    = flag.Bool("dumppostgres", true, "Whether to dump postgres")
+	updateRS  = flag.Bool("updateredshift", true, "Whether to replace redshift")
 )
 
 func main() {
 	flag.Parse()
-	tables := strings.Split(*tables_csv, ",")
+	tables := strings.Split(*tablesCSV, ",")
 
 	pgdb := postgres.NewDB()
 	defer pgdb.Close()

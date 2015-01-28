@@ -18,11 +18,12 @@ var (
 	//TODO: Use flag validators
 	apikey    = flag.String("mixpanelapikey", "", "API Key for Mixpanel.")
 	apisecret = flag.String("mixpanelapisecret", "", "API Secret for Mixpanel")
-	timeout   = flag.Duration("mixpanelexporttimeout", 10*time.Minute,
+	timeout   = flag.Duration("Exporttimeout", 10*time.Minute,
 		"Timeout value to be used while making a mixpanel export request. Defaults to 10 mins.")
 )
 
-type MixpanelExport struct {
+// Export is a struct to perform mixpanel export operations.
+type Export struct {
 	endpoint   string
 	version    string
 	apiKey     string
@@ -31,14 +32,16 @@ type MixpanelExport struct {
 	nowGetter  func() time.Time
 }
 
-func NewMixpanelExport() *MixpanelExport {
-	m := MixpanelExport{"https://data.mixpanel.com/api", "2.0", *apikey, *apisecret, http.Get, time.Now}
+// NewExport returns a pointer to an Export object initialized using API key and API secret provided
+// in flags.
+func NewExport() *Export {
+	m := Export{"https://data.mixpanel.com/api", "2.0", *apikey, *apisecret, http.Get, time.Now}
 	return &m
 }
 
-// json.Marshal wraps a string with quotes which breaks URL params in API calls. This function fixes
-// that problem.
-func StringOrJsonMarshal(value interface{}) (string, error) {
+// StringOrJSONMarshal returns a string value for an object to be used in URL strings. Compare this
+// to json.Marshal which wraps a string with quotes which breaks URL params.
+func StringOrJSONMarshal(value interface{}) (string, error) {
 	strValue, ok := value.(string)
 	if !ok {
 		jsonValue, err := json.Marshal(value)
@@ -50,7 +53,7 @@ func StringOrJsonMarshal(value interface{}) (string, error) {
 	return strValue, nil
 }
 
-func (m *MixpanelExport) ComputeSig(params map[string]interface{}) (string, error) {
+func (m *Export) computeSig(params map[string]interface{}) (string, error) {
 	var keys []string
 
 	for k := range params {
@@ -61,7 +64,7 @@ func (m *MixpanelExport) ComputeSig(params map[string]interface{}) (string, erro
 	joinedArgs := ""
 	for _, k := range keys {
 		joinedArgs += k
-		value, err := StringOrJsonMarshal(params[k])
+		value, err := StringOrJSONMarshal(params[k])
 		if err != nil {
 			return "", err
 		}
@@ -72,14 +75,16 @@ func (m *MixpanelExport) ComputeSig(params map[string]interface{}) (string, erro
 	return hex.EncodeToString(hash[:]), nil
 }
 
-func (m *MixpanelExport) Request(method string, params map[string]interface{}) ([]byte, error) {
+// Request performs a request on the export endpoint of the mixpanel API. Returns the raw bytes
+// received in the response.
+func (m *Export) Request(method string, params map[string]interface{}) ([]byte, error) {
 	params["api_key"] = m.apiKey
 	expireTime := m.nowGetter().Add(*timeout)
 	params["expire"] = expireTime.Unix()
 	params["format"] = "json"
 
 	delete(params, "sig")
-	sig, err := m.ComputeSig(params)
+	sig, err := m.computeSig(params)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +92,7 @@ func (m *MixpanelExport) Request(method string, params map[string]interface{}) (
 
 	values := url.Values{}
 	for key, value := range params {
-		strValue, err := StringOrJsonMarshal(value)
+		strValue, err := StringOrJSONMarshal(value)
 		if err != nil {
 			return nil, err
 		}
