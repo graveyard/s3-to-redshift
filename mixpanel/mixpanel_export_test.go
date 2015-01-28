@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type marshalTestPair struct {
@@ -21,12 +23,8 @@ func TestStringOrJSONMarshal(t *testing.T) {
 	}
 	for _, pair := range tests {
 		v, err := StringOrJSONMarshal(pair.value)
-		if err != nil {
-			t.Errorf("Unexpected error %s for StringOrJSONMarshal(%+v). Expected %s", err.Error(), pair.value, pair.strvalue)
-		}
-		if v != pair.strvalue {
-			t.Errorf("Unexpected value %s for StringOrJSONMarshal(%+v). Expected %s", v, pair.value, pair.strvalue)
-		}
+		assert.NoError(t, err)
+		assert.Equal(t, pair.strvalue, v)
 	}
 }
 
@@ -39,12 +37,8 @@ func TestComputeSig(t *testing.T) {
 	}
 	m, exp := Export{apiSecret: "TESTMIXPANELAPISECRET"}, "1beb8d4f61da24302844e252a8ff6e75"
 	sig, err := m.computeSig(params)
-	if err != nil {
-		t.Errorf("Unexpected error %s for computeSign(%+v). Expected %s", err.Error(), params, exp)
-	}
-	if sig != exp {
-		t.Errorf("Unexpected value %s for computeSign(%+v). Expected %s", sig, params, exp)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, exp, sig)
 }
 
 func mockHTTPGet(url string) (*http.Response, error) {
@@ -66,10 +60,6 @@ func TestRequest(t *testing.T) {
 	}
 	expurl := "https://data.mixpanel.com/api/2.0/method/?api_key=apikey&events=%5B%22event1%22%2C%22event2%22%5D&expire=10000600&format=json&param1=value1&param2=value2&sig=825125f9640ce6bee7b6c25fd33eacb3"
 	url, err := m.Request("method", params)
-	if err != nil {
-		t.Errorf("Unexpected error %s for Request(%+v, %+v). Expected %s", err.Error(), "method", params, expurl)
-	}
-	if string(url) != expurl {
-		t.Errorf("Unexpected URL %s for Request(%+v, %+v). Expected %s", url, "method", params, expurl)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, expurl, url)
 }
