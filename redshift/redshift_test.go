@@ -3,11 +3,10 @@ package redshift
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"reflect"
 	"testing"
 
 	"github.com/clever/redshifter/postgres"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockSQLDB []string
@@ -29,16 +28,8 @@ func TestCopyJSONDataFromS3(t *testing.T) {
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.CopyJSONDataFromS3(table, file, jsonpathsFile, awsRegion)
-	if err != nil {
-		t.Error("Unexpected error %s while during CopyJSONDataFromS3(). Expected query: %s", err.Error(), exp)
-	}
-	if len(cmds) == 0 {
-		t.Fatalf("Expected query \"%s\" not executed during CopyJSONDataFromS3().", exp)
-	}
-	if cmds[0] != exp {
-		log.Println(cmds[0])
-		t.Fatalf("Unexpected query \"%s\" executed during CopyJSONDataFromS3. Expected \"%s\"", cmds[0], exp)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, []string{exp}, cmds)
 }
 
 func TestCopyGzipCsvDataFromS3(t *testing.T) {
@@ -50,16 +41,8 @@ func TestCopyGzipCsvDataFromS3(t *testing.T) {
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.CopyGzipCsvDataFromS3(table, file, awsRegion, delimiter)
-	if err != nil {
-		t.Error("Unexpected error %s while during CopyGzipCsvDataFromS3(). Expected query: %s", err.Error(), exp)
-	}
-	if len(cmds) == 0 {
-		t.Fatalf("Expected query \"%s\" not executed during CopyGzipCsvDataFromS3().", exp)
-	}
-	if cmds[0] != exp {
-		log.Println(cmds[0])
-		t.Fatalf("Unexpected query \"%s\" executed during CopyGzipCsvDataFromS3(). Expected \"%s\"", cmds[0], exp)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, []string{exp}, cmds)
 }
 
 func TestCreateTable(t *testing.T) {
@@ -72,16 +55,8 @@ func TestCreateTable(t *testing.T) {
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.createTable("tablename", ts)
-	if err != nil {
-		t.Error("Unexpected error %s while during CreateTable(). Expected query: %s", err.Error(), exp)
-	}
-	if len(cmds) == 0 {
-		t.Fatalf("Expected query \"%s\" not executed during CreateTable().", exp)
-	}
-	if cmds[0] != exp {
-		log.Println(cmds[0])
-		t.Fatalf("Unexpected query \"%s\" executed during CreateTable(). Expected \"%s\"", cmds[0], exp)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, []string{exp}, cmds)
 }
 
 func TestRefreshTable(t *testing.T) {
@@ -104,10 +79,6 @@ func TestRefreshTable(t *testing.T) {
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.RefreshTable(name, prefix, file, awsRegion, ts, delim)
-	if err != nil {
-		t.Fatalf("Unexpected error %s during RefreshTables()", err.Error())
-	}
-	if !reflect.DeepEqual([]string(cmds), expcmds) {
-		t.Fatalf("Unexpected queries during RefreshTables().\nExpected: %v\n  Actual: %v", expcmds, cmds)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, expcmds, cmds)
 }
