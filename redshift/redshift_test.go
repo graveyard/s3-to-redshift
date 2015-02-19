@@ -74,7 +74,7 @@ func TestRefreshTable(t *testing.T) {
 		"DROP TABLE IF EXISTS test_prefix_tablename",
 		"CREATE TABLE test_prefix_tablename (field1 type1  NOT NULL, field2 type2 SORTKEY PRIMARY KEY, field3 type3 DEFAULT defaultval3 )",
 		copycmd,
-		"DROP TABLE tablename; ALTER TABLE test_prefix_tablename RENAME TO tablename;",
+		"DROP TABLE IF EXISTS tablename; ALTER TABLE test_prefix_tablename RENAME TO tablename;",
 	}
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
