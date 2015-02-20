@@ -3,6 +3,8 @@ script:
   - go get github.com/tools/godep
   - mkdir -p $GOPATH/src/github.com/Clever
   - ln -s `pwd` $GOPATH/src/github.com/Clever/redshifter
+  - export AWS_ACCESS_KEY_ID=x
+  - export AWS_SECRET_ACCESS_KEY=x
   - make test
 notify:
   email:
