@@ -4,7 +4,7 @@ SUBPKG_NAMES := mixpanel postgres redshift
 SUBPKGS = $(addprefix $(PKG)/, $(SUBPKG_NAMES))
 PKGS = $(PKG) $(SUBPKGS)
 
-.PHONY: test golint README
+.PHONY: test golint docs
 
 test: docs $(PKGS)
 
@@ -16,9 +16,6 @@ $(GOPATH)/bin/golint:
 
 $(GOPATH)/bin/godocdown:
 	@go get github.com/robertkrimen/godocdown/godocdown
-
-README.md: $(GOPATH)/bin/godocdown *.go
-	@$(GOPATH)/bin/godocdown -template=.godocdown.template $(PKG) > README.md
 
 $(PKGS): $(GOPATH)/bin/golint docs
 	@go get -d -t $@

@@ -127,7 +127,7 @@ func (r *Redshift) RefreshTable(name, prefix, file, awsRegion string, ts postgre
 	if err := r.CopyGzipCsvDataFromS3(tmptable, file, awsRegion, delim); err != nil {
 		return err
 	}
-	_, err := r.logAndExec(fmt.Sprintf("DROP TABLE %s; ALTER TABLE %s RENAME TO %s;", name, tmptable, name), false)
+	_, err := r.logAndExec(fmt.Sprintf("DROP TABLE IF EXISTS %s; ALTER TABLE %s RENAME TO %s;", name, tmptable, name), false)
 	return err
 }
 

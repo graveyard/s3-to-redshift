@@ -29,7 +29,7 @@ func TestCopyJSONDataFromS3(t *testing.T) {
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.CopyJSONDataFromS3(table, file, jsonpathsFile, awsRegion)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{exp}, cmds)
+	assert.Equal(t, mockSQLDB{exp}, cmds)
 }
 
 func TestCopyGzipCsvDataFromS3(t *testing.T) {
@@ -42,7 +42,7 @@ func TestCopyGzipCsvDataFromS3(t *testing.T) {
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.CopyGzipCsvDataFromS3(table, file, awsRegion, delimiter)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{exp}, cmds)
+	assert.Equal(t, mockSQLDB{exp}, cmds)
 }
 
 func TestCreateTable(t *testing.T) {
@@ -56,7 +56,7 @@ func TestCreateTable(t *testing.T) {
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
 	err := mockrs.createTable("tablename", ts)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{exp}, cmds)
+	assert.Equal(t, mockSQLDB{exp}, cmds)
 }
 
 func TestRefreshTable(t *testing.T) {
@@ -70,11 +70,11 @@ func TestRefreshTable(t *testing.T) {
 		prefix+name, file, awsRegion, delim)
 	copycmd += " ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON"
 	copycmd += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
-	expcmds := []string{
+	expcmds := mockSQLDB{
 		"DROP TABLE IF EXISTS test_prefix_tablename",
 		"CREATE TABLE test_prefix_tablename (field1 type1  NOT NULL, field2 type2 SORTKEY PRIMARY KEY, field3 type3 DEFAULT defaultval3 )",
 		copycmd,
-		"DROP TABLE tablename; ALTER TABLE test_prefix_tablename RENAME TO tablename;",
+		"DROP TABLE IF EXISTS tablename; ALTER TABLE test_prefix_tablename RENAME TO tablename;",
 	}
 	cmds := mockSQLDB([]string{})
 	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
