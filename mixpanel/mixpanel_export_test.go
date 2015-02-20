@@ -61,5 +61,5 @@ func TestRequest(t *testing.T) {
 	expurl := "https://data.mixpanel.com/api/2.0/method/?api_key=apikey&events=%5B%22event1%22%2C%22event2%22%5D&expire=10000600&format=json&param1=value1&param2=value2&sig=825125f9640ce6bee7b6c25fd33eacb3"
 	url, err := m.Request("method", params)
 	assert.NoError(t, err)
-	assert.Equal(t, expurl, url)
+	assert.Equal(t, expurl, string(url))
 }
