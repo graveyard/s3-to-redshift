@@ -22,6 +22,7 @@ var (
 		time.Now().AddDate(0, 0, -1).Format("2006-01-02"),
 		"Date in YYYY-MM-DD format. Defaults to yesterday.")
 	mixpanelExportDir  = flag.String("exportdir", "", "Directory to store the exported mixpanel data.")
+	redshiftSchema     = flag.String("redshiftschema", "public", "Schema with the redshift table.")
 	redshiftTable      = flag.String("redshifttable", "", "Name of the redshift table.")
 	exportFromMixpanel = flag.Bool("export", true, "Whether to export from mixpanel.")
 	copyToRedshift     = flag.Bool("copy", true, "Whether to copy to redshift.")
@@ -54,7 +55,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := r.CopyJSONDataFromS3(*redshiftTable, exportFile, *jsonpathsFile, awsRegion); err != nil {
+		if err := r.CopyJSONDataFromS3(*redshiftSchema, *redshiftTable, exportFile, *jsonpathsFile, awsRegion); err != nil {
 			log.Fatal(err)
 		}
 		if err := r.VacuumAnalyze(); err != nil {

@@ -29,6 +29,7 @@ godep go run mixpanel_to_redshift.go \
 -redshiftuser=<redshift_username> \
 -redshiftpassword=<redshift_password> \
 -redshiftdatabase=<redshift_database_name> \
+-redshiftschema=<redshift_schema> \
 -redshifttable=<redshift_table>
 -jsonpathsfile=<jsonpaths_file> \
 -mixpanelevents=<mixpanel_events_csv> \
