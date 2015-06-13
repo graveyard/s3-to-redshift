@@ -152,3 +152,8 @@ func (r *Redshift) VacuumAnalyze() error {
 	_, err := r.logAndExec("VACUUM FULL; ANALYZE", false)
 	return err
 }
+
+func (r *Redshift) VacuumAnalyzeTable(table string) error {
+	_, err := r.logAndExec(fmt.Sprintf(`VACUUM FULL "%s"; ANALYZE "%s"`, table, table), false)
+	return err
+}
