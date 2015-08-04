@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clever/pathio"
-	"github.com/clever/redshifter/mixpanel"
-	"github.com/clever/redshifter/redshift"
+	"github.com/Clever/pathio"
+	"github.com/Clever/redshifter/mixpanel"
+	"github.com/Clever/redshifter/redshift"
 	"github.com/segmentio/go-env"
 )
 
