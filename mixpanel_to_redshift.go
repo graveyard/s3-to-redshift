@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Clever/pathio"
 	"github.com/Clever/redshifter/mixpanel"
 	"github.com/Clever/redshifter/redshift"
 	"github.com/segmentio/go-env"
+
+	"gopkg.in/Clever/pathio.v1"
 )
 
 var (
