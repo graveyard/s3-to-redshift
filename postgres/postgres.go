@@ -8,9 +8,9 @@ import (
 	"io"
 	"log"
 
-	"github.com/Clever/pathio"
 	"github.com/facebookgo/errgroup"
 	_ "github.com/lib/pq" // Postgres driver.
+	"gopkg.in/Clever/pathio.v1"
 	"gopkg.in/pg.v2"
 )
 
