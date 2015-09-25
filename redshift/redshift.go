@@ -7,7 +7,6 @@ import (
 	"log"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/Clever/redshifter/postgres"
 	"github.com/facebookgo/errgroup"
@@ -27,25 +26,17 @@ type Redshift struct {
 }
 
 var (
-	// TODO: include flag validation
 	awsAccessKeyID     = env.MustGet("AWS_ACCESS_KEY_ID")
 	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
-	host               = flag.String("redshifthost", "", "Address of the redshift host")
-	port               = flag.Int("redshiftport", 0, "Address of the redshift host")
-	db                 = flag.String("redshiftdatabase", "", "Redshift database to connect to")
-	user               = flag.String("redshiftuser", "", "Redshift user to connect as")
-	pwd                = flag.String("redshiftpassword", "", "Password for the redshift user")
-	timeout            = flag.Duration("redshiftconnecttimeout", 10*time.Second,
-		"Timeout while connecting to Redshift. Defaults to 10 seconds.")
 )
 
-// NewRedshift returns a pointer to a new redshift object using configuration values set in the
-// flags.
-func NewRedshift() (*Redshift, error) {
+// NewRedshift returns a pointer to a new redshift object using configuration values passed in
+// on instantiation and the AWS env vars we assume exist
+func NewRedshift(host, port, db, user, pwd string, timeout int) (*Redshift, error) {
 	flag.Parse()
-	source := fmt.Sprintf("host=%s port=%d dbname=%s connect_timeout=%d", *host, *port, *db, int(timeout.Seconds()))
-	log.Println("Connecting to Reshift Source: ", source)
-	source += fmt.Sprintf(" user=%s password=%s", *user, *pwd)
+	source := fmt.Sprintf("host=%s port=%d dbname=%s connect_timeout=%d", host, port, db, timeout)
+	log.Println("Connecting to Redshift Source: ", source)
+	source += fmt.Sprintf(" user=%s password=%s", user, pwd)
 	sqldb, err := sql.Open("postgres", source)
 	if err != nil {
 		return nil, err
@@ -92,6 +83,7 @@ func (r *Redshift) createTempTable(tmpschema, schema, name string) error {
 	return err
 }
 
+// refreshData atomically clears out a table and loads in the contents of a table in the temp schema
 func (r *Redshift) refreshData(tmpschema, schema, name string) error {
 	cmds := []string{
 		"BEGIN TRANSACTION",
