@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PKG := github.com/Clever/redshifter
 SUBPKG_NAMES := mixpanel postgres redshift
 SUBPKGS = $(addprefix $(PKG)/, $(SUBPKG_NAMES))
-PKGS = $(PKG) $(SUBPKGS)
+PKGS = $(PKG)/cmd/ $(SUBPKGS)
 
 .PHONY: test golint docs
 

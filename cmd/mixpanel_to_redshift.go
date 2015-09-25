@@ -16,15 +16,21 @@ import (
 
 var (
 	// TODO: include flag validation
-	awsRegion          = env.MustGet("AWS_REGION")
 	jsonpathsFile      = flag.String("jsonpathsfile", "", "s3 file with jsonpaths data.")
 	mixpanelEvents     = flag.String("mixpanelevents", "", "Comma separated values of events to be exported.")
 	mixpanelExportDate = flag.String("exportdate",
 		time.Now().AddDate(0, 0, -1).Format("2006-01-02"),
 		"Date in YYYY-MM-DD format. Defaults to yesterday.")
-	mixpanelExportDir  = flag.String("exportdir", "", "Directory to store the exported mixpanel data.")
-	redshiftSchema     = flag.String("redshiftschema", "public", "Schema with the redshift table.")
-	redshiftTable      = flag.String("redshifttable", "", "Name of the redshift table.")
+	mixpanelExportDir = flag.String("exportdir", "", "Directory to store the exported mixpanel data.")
+	host              = flag.String("host", "", "Address of the redshift host")
+	port              = flag.String("port", "5439", "Port of the redshift host")
+	db                = flag.String("database", "", "Redshift database to connect to")
+	user              = flag.String("user", "", "Redshift user to connect as")
+	schema            = flag.String("schema", "public", "Schema with the redshift table.")
+	table             = flag.String("table", "", "Name of the redshift table.")
+	pwd               = flag.String("password", "", "Password for the redshift user")
+	redshiftTimeout   = flag.Int("connecttimeout", 10,
+		"Timeout in seconds while connecting to Redshift. Defaults to 10 seconds.")
 	exportFromMixpanel = flag.Bool("export", true, "Whether to export from mixpanel.")
 	copyToRedshift     = flag.Bool("copy", true, "Whether to copy to redshift.")
 )
@@ -51,12 +57,17 @@ func main() {
 	}
 
 	if *copyToRedshift {
-		r, err := redshift.NewRedshift()
+		s3Info := redshift.S3Info{
+			Region:    env.MustGet("AWS_REGION"),
+			AccessID:  env.MustGet("AWS_ACCESS_KEY_ID"),
+			SecretKey: env.MustGet("AWS_SECRET_ACCESS_KEY"),
+		}
+		r, err := redshift.NewRedshift(*host, *port, *db, *user, *pwd, *redshiftTimeout, s3Info)
 		defer r.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := r.CopyJSONDataFromS3(*redshiftSchema, *redshiftTable, exportFile, *jsonpathsFile, awsRegion); err != nil {
+		if err := r.CopyJSONDataFromS3(*schema, *table, exportFile, *jsonpathsFile); err != nil {
 			log.Fatal(err)
 		}
 		if err := r.VacuumAnalyze(); err != nil {
