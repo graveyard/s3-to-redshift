@@ -24,14 +24,14 @@ var (
 		"Date in YYYY-MM-DD format. Defaults to yesterday.")
 	mixpanelExportDir = flag.String("exportdir", "", "Directory to store the exported mixpanel data.")
 	host              = flag.String("host", "", "Address of the redshift host")
-	port              = flag.Int("port", 0, "Address of the redshift host")
+	port              = flag.String("port", "5439", "Port of the redshift host")
 	db                = flag.String("database", "", "Redshift database to connect to")
 	user              = flag.String("user", "", "Redshift user to connect as")
 	schema            = flag.String("schema", "public", "Schema with the redshift table.")
 	table             = flag.String("table", "", "Name of the redshift table.")
 	pwd               = flag.String("password", "", "Password for the redshift user")
-	timeout           = flag.Duration("connecttimeout", 10*time.Second,
-		"Timeout while connecting to Redshift. Defaults to 10 seconds.")
+	redshiftTimeout   = flag.Int("connecttimeout", 10,
+		"Timeout in seconds while connecting to Redshift. Defaults to 10 seconds.")
 	exportFromMixpanel = flag.Bool("export", true, "Whether to export from mixpanel.")
 	copyToRedshift     = flag.Bool("copy", true, "Whether to copy to redshift.")
 )
@@ -58,7 +58,7 @@ func main() {
 	}
 
 	if *copyToRedshift {
-		r, err := redshift.NewRedshift(*host, *port, *db, *user, *pwd, int(*redshiftTimeout.Seconds()))
+		r, err := redshift.NewRedshift(*host, *port, *db, *user, *pwd, *redshiftTimeout)
 		defer r.Close()
 		if err != nil {
 			log.Fatal(err)
