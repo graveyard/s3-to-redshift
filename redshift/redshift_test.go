@@ -22,31 +22,41 @@ func (m *mockSQLDB) Close() error {
 }
 
 func TestCopyJSONDataFromS3(t *testing.T) {
-	schema, table, file, jsonpathsFile, awsRegion := "testschema", "tablename", "s3://path", "s3://jsonpathsfile", "testregion"
+	s3Info := S3Info{
+		Region:    "testregion",
+		AccessID:  "accesskey",
+		SecretKey: "secretkey",
+	}
+	schema, table, file, jsonpathsFile := "testschema", "tablename", "s3://path", "s3://jsonpathsfile"
 	exp := fmt.Sprintf("COPY \"%s\".\"%s\" FROM '%s' WITH json '%s' region '%s' timeformat 'epochsecs' COMPUPDATE ON",
-		schema, table, file, jsonpathsFile, awsRegion)
-	exp += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
+		schema, table, file, jsonpathsFile, s3Info.Region)
+	exp += fmt.Sprintf(" CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'", s3Info.AccessID, s3Info.SecretKey)
 	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CopyJSONDataFromS3(schema, table, file, jsonpathsFile, awsRegion)
+	mockrs := Redshift{&cmds, s3Info}
+	err := mockrs.CopyJSONDataFromS3(schema, table, file, jsonpathsFile)
 	assert.NoError(t, err)
 	assert.Equal(t, mockSQLDB{exp}, cmds)
 }
 
 func TestCopyGzipCsvDataFromS3(t *testing.T) {
-	schema, table, file, awsRegion, delimiter := "testschema", "tablename", "s3://path", "testregion", '|'
+	s3Info := S3Info{
+		Region:    "testregion",
+		AccessID:  "accesskey",
+		SecretKey: "secretkey",
+	}
+	schema, table, file, delimiter := "testschema", "tablename", "s3://path", '|'
 	ts := postgres.TableSchema{
 		{3, "field3", "type3", "defaultval3", false, false},
 		{1, "field1", "type1", "", true, false},
 		{2, "field2", "type2", "", false, true},
 	}
 	exp := fmt.Sprintf(`COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' GZIP CSV DELIMITER '%c'`,
-		schema, table, "field1, field2, field3", file, awsRegion, delimiter)
+		schema, table, "field1, field2, field3", file, s3Info.Region, delimiter)
 	exp += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON"
-	exp += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
+	exp += fmt.Sprintf(" CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'", s3Info.AccessID, s3Info.SecretKey)
 	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CopyGzipCsvDataFromS3(schema, table, file, awsRegion, ts, delimiter)
+	mockrs := Redshift{&cmds, s3Info}
+	err := mockrs.CopyGzipCsvDataFromS3(schema, table, file, ts, delimiter)
 	assert.NoError(t, err)
 	assert.Equal(t, mockSQLDB{exp}, cmds)
 }
@@ -55,23 +65,28 @@ func TestCreateTable(t *testing.T) {
 	tmpschema, schema, name := "testtmpschema", "testschema", "testtable"
 	exp := fmt.Sprintf(`CREATE TABLE "%s"."%s" (LIKE "%s"."%s")`, tmpschema, name, schema, name)
 	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
+	mockrs := Redshift{&cmds, S3Info{}}
 	err := mockrs.createTempTable(tmpschema, schema, name)
 	assert.NoError(t, err)
 	assert.Equal(t, mockSQLDB{exp}, cmds)
 }
 
 func TestRefreshTable(t *testing.T) {
-	schema, name, tmpschema, file, awsRegion, delim := "testschema", "tablename", "testtmpschema", "s3://path", "testRegion", '|'
+	s3Info := S3Info{
+		Region:    "testregion",
+		AccessID:  "accesskey",
+		SecretKey: "secretkey",
+	}
+	schema, name, tmpschema, file, delim := "testschema", "tablename", "testtmpschema", "s3://path", '|'
 	ts := postgres.TableSchema{
 		{3, "field3", "type3", "defaultval3", false, false},
 		{1, "field1", "type1", "", true, false},
 		{2, "field2", "type2", "", false, true},
 	}
 	copycmd := fmt.Sprintf(`COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' GZIP CSV DELIMITER '%c'`,
-		tmpschema, name, "field1, field2, field3", file, awsRegion, delim)
+		tmpschema, name, "field1, field2, field3", file, s3Info.Region, delim)
 	copycmd += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON"
-	copycmd += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
+	copycmd += fmt.Sprintf(" CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'", s3Info.AccessID, s3Info.SecretKey)
 	datarefreshcmds := []string{
 		"BEGIN TRANSACTION",
 		fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, name),
@@ -85,8 +100,8 @@ func TestRefreshTable(t *testing.T) {
 		`VACUUM FULL "testschema"."tablename"; ANALYZE "testschema"."tablename"`,
 	}
 	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.refreshTable(schema, name, tmpschema, file, awsRegion, ts, delim)
+	mockrs := Redshift{&cmds, s3Info}
+	err := mockrs.refreshTable(schema, name, tmpschema, file, ts, delim)
 	assert.NoError(t, err)
 	assert.Equal(t, expcmds, cmds)
 }
@@ -95,7 +110,7 @@ func TestVacuumAnalyzeTable(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	expcmds := mockSQLDB{`VACUUM FULL "testschema"."tablename"; ANALYZE "testschema"."tablename"`}
 	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
+	mockrs := Redshift{&cmds, S3Info{}}
 	err := mockrs.VacuumAnalyzeTable(schema, table)
 	assert.NoError(t, err)
 	assert.Equal(t, expcmds, cmds)

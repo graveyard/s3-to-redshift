@@ -18,15 +18,16 @@ redshift database.
 #### func  NewRedshift
 
 ```go
-func NewRedshift(host, port, db, user, pwd string, timeout int) (*Redshift, error)
+func NewRedshift(host, port, db, user, pwd string, timeout int, s3Info S3Info) (*Redshift, error)
 ```
 NewRedshift returns a pointer to a new redshift object using configuration
-values passed in on instantiation and the AWS env vars we assume exist
+values passed in on instantiation and the AWS env vars we assume exist Don't
+need to pass s3 info unless doing a COPY operation
 
 #### func (*Redshift) CopyGzipCsvDataFromS3
 
 ```go
-func (r *Redshift) CopyGzipCsvDataFromS3(schema, table, file, awsRegion string, ts postgres.TableSchema, delimiter rune) error
+func (r *Redshift) CopyGzipCsvDataFromS3(schema, table, file string, ts postgres.TableSchema, delimiter rune) error
 ```
 CopyGzipCsvDataFromS3 copies gzipped CSV data from an S3 file into a redshift
 table.
@@ -34,7 +35,7 @@ table.
 #### func (*Redshift) CopyJSONDataFromS3
 
 ```go
-func (r *Redshift) CopyJSONDataFromS3(schema, table, file, jsonpathsFile, awsRegion string) error
+func (r *Redshift) CopyJSONDataFromS3(schema, table, file, jsonpathsFile string) error
 ```
 CopyJSONDataFromS3 copies JSON data present in an S3 file into a redshift table.
 
@@ -42,7 +43,7 @@ CopyJSONDataFromS3 copies JSON data present in an S3 file into a redshift table.
 
 ```go
 func (r *Redshift) RefreshTables(
-	tables map[string]postgres.TableSchema, schema, tmpschema, s3prefix, awsRegion string, delim rune) error
+	tables map[string]postgres.TableSchema, schema, tmpschema, s3prefix string, delim rune) error
 ```
 RefreshTables refreshes multiple tables in parallel and returns an error if any
 of the copies fail.
@@ -64,3 +65,15 @@ func (r *Redshift) VacuumAnalyzeTable(schema, table string) error
 VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is
 useful for recreating the indices after a database has been modified and
 updating the query planner.
+
+#### type S3Info
+
+```go
+type S3Info struct {
+	Region    string
+	AccessID  string
+	SecretKey string
+}
+```
+
+S3Info holds the information necessary to copy data from s3 buckets

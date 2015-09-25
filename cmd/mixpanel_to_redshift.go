@@ -16,7 +16,6 @@ import (
 
 var (
 	// TODO: include flag validation
-	awsRegion          = env.MustGet("AWS_REGION")
 	jsonpathsFile      = flag.String("jsonpathsfile", "", "s3 file with jsonpaths data.")
 	mixpanelEvents     = flag.String("mixpanelevents", "", "Comma separated values of events to be exported.")
 	mixpanelExportDate = flag.String("exportdate",
@@ -58,12 +57,17 @@ func main() {
 	}
 
 	if *copyToRedshift {
-		r, err := redshift.NewRedshift(*host, *port, *db, *user, *pwd, *redshiftTimeout)
+		s3Info := redshift.S3Info{
+			Region:    env.MustGet("AWS_REGION"),
+			AccessID:  env.MustGet("AWS_ACCESS_KEY_ID"),
+			SecretKey: env.MustGet("AWS_SECRET_ACCESS_KEY"),
+		}
+		r, err := redshift.NewRedshift(*host, *port, *db, *user, *pwd, *redshiftTimeout, s3Info)
 		defer r.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := r.CopyJSONDataFromS3(*schema, *table, exportFile, *jsonpathsFile, awsRegion); err != nil {
+		if err := r.CopyJSONDataFromS3(*schema, *table, exportFile, *jsonpathsFile); err != nil {
 			log.Fatal(err)
 		}
 		if err := r.VacuumAnalyze(); err != nil {
