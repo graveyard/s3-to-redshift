@@ -36,11 +36,11 @@ var (
 // NewRedshift returns a pointer to a new redshift object using configuration values passed in
 // on instantiation and the AWS env vars we assume exist
 // Don't need to pass s3 info unless doing a COPY operation
-func NewRedshift(host, port, db, user, pwd string, timeout int, s3Info S3Info) (*Redshift, error) {
+func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3Info) (*Redshift, error) {
 	flag.Parse()
 	source := fmt.Sprintf("host=%s port=%d dbname=%s connect_timeout=%d", host, port, db, timeout)
 	log.Println("Connecting to Redshift Source: ", source)
-	source += fmt.Sprintf(" user=%s password=%s", user, pwd)
+	source += fmt.Sprintf(" user=%s password=%s", user, password)
 	sqldb, err := sql.Open("postgres", source)
 	if err != nil {
 		return nil, err

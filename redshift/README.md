@@ -18,7 +18,7 @@ redshift database.
 #### func  NewRedshift
 
 ```go
-func NewRedshift(host, port, db, user, pwd string, timeout int, s3Info S3Info) (*Redshift, error)
+func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3Info) (*Redshift, error)
 ```
 NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
