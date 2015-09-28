@@ -67,9 +67,14 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := r.CopyJSONDataFromS3(*schema, *table, exportFile, *jsonpathsFile); err != nil {
+		// do use s3 creds, don't use GZIP
+		// I am not confident this currently works - you may have to set timeformat to 'epochsecs'
+		copySQL := r.GetJSONCopySQL(*schema, *table, exportFile, *jsonpathsFile, true, false)
+		err = r.SafeExec([]string{copySQL})
+		if err != nil {
 			log.Fatal(err)
 		}
+
 		if err := r.VacuumAnalyze(); err != nil {
 			log.Fatal(err)
 		}
