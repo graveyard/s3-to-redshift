@@ -15,7 +15,7 @@ func TestGetJSONCopySQL(t *testing.T) {
 		SecretKey: "secretkey",
 	}
 	schema, table, file, jsonpathsFile := "testschema", "tablename", "s3://path", "s3://jsonpathsfile"
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	prepStatement := fmt.Sprintf(sql, "?", "?", "?", "?", "?", "?", "?", "?")
 	execRegex := fmt.Sprintf(sql, ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*") // slightly awk
 
@@ -59,7 +59,7 @@ func TestCopyGzipCsvDataFromS3(t *testing.T) {
 	}
 
 	sql := `COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`
-	sql += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE COMPUPDATE ON"
+	sql += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
 	sql += ` CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	prepStatement := fmt.Sprintf(sql, "?", "?", "?", "?", "?", "?", "?", "?", "?")
 	execRegex := fmt.Sprintf(sql, ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*") // slightly awk
@@ -101,7 +101,7 @@ func TestRefreshTable(t *testing.T) {
 	schema, name, file, delim := "testschema", "tablename", "s3://path", '|'
 
 	sql := `COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`
-	sql += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE COMPUPDATE ON"
+	sql += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
 	sql += ` CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	prepStatement := fmt.Sprintf(sql, "?", "?", "?", "?", "?", "?", "?", "?", "?")
 	execRegex := fmt.Sprintf(sql, ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*") // slightly awk

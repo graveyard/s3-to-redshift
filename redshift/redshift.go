@@ -107,7 +107,7 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths st
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copySQL := `COPY "?"."?" FROM '?' WITH ? JSON '?' REGION '?' TIMEFORMAT 'auto' STATUPDATE COMPUPDATE ON %s`
+	copySQL := `COPY "?"."?" FROM '?' WITH ? JSON '?' REGION '?' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`
 	copyStmt, err := r.Prepare(fmt.Sprintf(copySQL, credSQL))
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, 
 	}
 
 	copySQL := fmt.Sprintf(`COPY "?"."?" (?) FROM '?' WITH REGION '?' ? CSV DELIMITER '?'`)
-	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE COMPUPDATE ON"
+	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
 	fullCopySQL := fmt.Sprintf("%s %s %s", copySQL, opts, credSQL)
 	copyStmt, err := r.Prepare(fullCopySQL)
 	if err != nil {
