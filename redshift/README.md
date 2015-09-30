@@ -9,25 +9,25 @@
 
 ```go
 type ColInfo struct {
-	Ordinal    int    `yaml:"ordinal"`
-	Name       string `yaml:"dest"`
-	Type       string `yaml:"type"`
-	DefaultVal string `yaml:"defaultval"`
-	NotNull    bool   `yaml:"notnull"`
-	PrimaryKey bool   `yaml:"primarykey"`
-	DistKey    bool   `yaml:"distkey"`
-	SortOrd    int    `yaml:"sortord"`
+	Ordinal     int    `yaml:"ordinal"`
+	Name        string `yaml:"dest"`
+	Type        string `yaml:"type"`
+	DefaultVal  string `yaml:"defaultval"`
+	NotNull     bool   `yaml:"notnull"`
+	PrimaryKey  bool   `yaml:"primarykey"`
+	DistKey     bool   `yaml:"distkey"`
+	SortOrdinal int    `yaml:"sortord"`
 }
 ```
 
 ColInfo is a struct that contains information about a column in a Redshift
-database. SortKey and DistKey only make sense for Redshift
+database. SortOrdinal and DistKey only make sense for Redshift
 
 #### type Meta
 
 ```go
 type Meta struct {
-	DataDateColumn string `yaml:"data_date_column"`
+	DataDateColumn string `yaml:"datadatecolumn"`
 	Schema         string `yaml:"schema"`
 }
 ```
