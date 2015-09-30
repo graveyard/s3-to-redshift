@@ -46,7 +46,7 @@ type Table struct {
 // NOTE: this will be useful for the s3-to-redshift worker, but is currently not very useful
 // same with the yaml info
 type Meta struct {
-	DataDateColumn string `yaml:"data_date_column"`
+	DataDateColumn string `yaml:"datadatecolumn"`
 	Schema         string `yaml:"schema"`
 }
 
