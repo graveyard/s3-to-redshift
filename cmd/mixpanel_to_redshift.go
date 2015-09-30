@@ -28,7 +28,7 @@ var (
 	user              = flag.String("user", "", "Redshift user to connect as")
 	schema            = flag.String("schema", "public", "Schema with the redshift table.")
 	table             = flag.String("table", "", "Name of the redshift table.")
-	pwd               = flag.String("password", "", "Password for the redshift user")
+	password          = flag.String("password", "", "Password for the redshift user")
 	redshiftTimeout   = flag.Int("connecttimeout", 10,
 		"Timeout in seconds while connecting to Redshift. Defaults to 10 seconds.")
 	exportFromMixpanel = flag.Bool("export", true, "Whether to export from mixpanel.")
@@ -62,14 +62,25 @@ func main() {
 			AccessID:  env.MustGet("AWS_ACCESS_KEY_ID"),
 			SecretKey: env.MustGet("AWS_SECRET_ACCESS_KEY"),
 		}
-		r, err := redshift.NewRedshift(*host, *port, *db, *user, *pwd, *redshiftTimeout, s3Info)
+		r, err := redshift.NewRedshift(*host, *port, *db, *user, *password, *redshiftTimeout, s3Info)
 		defer r.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := r.CopyJSONDataFromS3(*schema, *table, exportFile, *jsonpathsFile); err != nil {
+		// do use s3 creds, don't use GZIP
+		// I am not confident this currently works - you may have to set timeformat to 'epochsecs'
+		tx, err := r.Begin()
+		if err != nil {
 			log.Fatal(err)
 		}
+		if err := r.RunJSONCopy(tx, *schema, *table, exportFile, *jsonpathsFile, true, false); err != nil {
+			tx.Rollback()
+			log.Fatal(err)
+		}
+		if err := tx.Commit(); err != nil {
+			log.Fatal(err)
+		}
+
 		if err := r.VacuumAnalyze(); err != nil {
 			log.Fatal(err)
 		}
