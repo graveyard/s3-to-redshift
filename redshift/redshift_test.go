@@ -116,7 +116,6 @@ func TestRefreshTable(t *testing.T) {
 	mock.ExpectExec(execRegex).WithArgs(schema, name, "foo",
 		file, s3Info.Region, "GZIP", delim, s3Info.AccessID, s3Info.SecretKey).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
-	mock.ExpectExec(`VACUUM FULL "testschema"."tablename"; ANALYZE "testschema"."tablename"`).WillReturnResult(sqlmock.NewResult(0, 0))
 
 	// run the refresh table
 	assert.NoError(t, mockrs.refreshTable(schema, name, file, ts, delim))

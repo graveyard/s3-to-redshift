@@ -164,9 +164,8 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
 	return err
 }
 
-// RefreshTable refreshes a single table by copying gzipped CSV data into a temporary table
-// and later replacing the original table's data with the one from the temporary table in an
-// atomic operation.
+// RefreshTable refreshes a single table by truncating it and COPY-ing gzipped CSV data into it
+// This is done within a transaction for safety
 func (r *Redshift) refreshTable(schema, name, file string, ts Table, delim rune) error {
 	tx, err := r.Begin()
 	if err != nil {
@@ -180,10 +179,7 @@ func (r *Redshift) refreshTable(schema, name, file string, ts Table, delim rune)
 		tx.Rollback()
 		return err
 	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-	return r.VacuumAnalyzeTable(schema, name)
+	return tx.Commit()
 }
 
 // RefreshTables refreshes multiple tables in parallel and returns an error if any of the copies
