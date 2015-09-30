@@ -1,102 +1,161 @@
 package redshift
 
 import (
-	"database/sql"
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/Clever/redshifter/postgres"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 )
 
-type mockSQLDB []string
+func TestGetJSONCopySQL(t *testing.T) {
+	s3Info := S3Info{
+		Region:    "testregion",
+		AccessID:  "accesskey",
+		SecretKey: "secretkey",
+	}
+	schema, table, file, jsonpathsFile := "testschema", "tablename", "s3://path", "s3://jsonpathsfile"
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	prepStatement := fmt.Sprintf(sql, "?", "?", "?", "?", "?", "?", "?", "?")
+	execRegex := fmt.Sprintf(sql, ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*") // slightly awk
 
-func (m *mockSQLDB) Exec(query string, args ...interface{}) (sql.Result, error) {
-	*m = mockSQLDB(append([]string(*m), fmt.Sprintf(query)))
-	return nil, nil
-}
-
-func (m *mockSQLDB) Close() error {
-	return nil
-}
-
-func TestCopyJSONDataFromS3(t *testing.T) {
-	schema, table, file, jsonpathsFile, awsRegion := "testschema", "tablename", "s3://path", "s3://jsonpathsfile", "testregion"
-	exp := fmt.Sprintf("COPY \"%s\".\"%s\" FROM '%s' WITH json '%s' region '%s' timeformat 'epochsecs' COMPUPDATE ON",
-		schema, table, file, jsonpathsFile, awsRegion)
-	exp += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
-	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CopyJSONDataFromS3(schema, table, file, jsonpathsFile, awsRegion)
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	assert.Equal(t, mockSQLDB{exp}, cmds)
+	defer db.Close()
+	mockrs := Redshift{db, s3Info}
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(prepStatement)
+	mock.ExpectPrepare(prepStatement) // unsure why prep is called twice
+	mock.ExpectExec(execRegex).WithArgs(schema, table, file, "GZIP", jsonpathsFile,
+		s3Info.Region, s3Info.AccessID, s3Info.SecretKey).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.RunJSONCopy(tx, schema, table, file, jsonpathsFile, true, true))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
 }
 
 func TestCopyGzipCsvDataFromS3(t *testing.T) {
-	schema, table, file, awsRegion, delimiter := "testschema", "tablename", "s3://path", "testregion", '|'
-	ts := postgres.TableSchema{
-		{3, "field3", "type3", "defaultval3", false, false},
-		{1, "field1", "type1", "", true, false},
-		{2, "field2", "type2", "", false, true},
+	s3Info := S3Info{
+		Region:    "testregion",
+		AccessID:  "accesskey",
+		SecretKey: "secretkey",
 	}
-	exp := fmt.Sprintf(`COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' GZIP CSV DELIMITER '%c'`,
-		schema, table, "field1, field2, field3", file, awsRegion, delimiter)
-	exp += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON"
-	exp += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
-	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.CopyGzipCsvDataFromS3(schema, table, file, awsRegion, ts, delimiter)
-	assert.NoError(t, err)
-	assert.Equal(t, mockSQLDB{exp}, cmds)
-}
+	schema, table, file, delimiter := "testschema", "tablename", "s3://path", '|'
+	ts := Table{
+		Name: table,
+		Columns: []ColInfo{
+			{3, "field3", "type3", "defaultval3", false, false, false, 0},
+			{1, "field1", "type1", "", true, false, false, 0},
+			{2, "field2", "type2", "", false, true, false, 0},
+		},
+		Meta: Meta{},
+	}
 
-func TestCreateTable(t *testing.T) {
-	tmpschema, schema, name := "testtmpschema", "testschema", "testtable"
-	exp := fmt.Sprintf(`CREATE TABLE "%s"."%s" (LIKE "%s"."%s")`, tmpschema, name, schema, name)
-	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.createTempTable(tmpschema, schema, name)
+	sql := `COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`
+	sql += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
+	sql += ` CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	prepStatement := fmt.Sprintf(sql, "?", "?", "?", "?", "?", "?", "?", "?", "?")
+	execRegex := fmt.Sprintf(sql, ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*") // slightly awk
+
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	assert.Equal(t, mockSQLDB{exp}, cmds)
+	defer db.Close()
+	mockrs := Redshift{db, s3Info}
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(prepStatement)
+	mock.ExpectPrepare(prepStatement) // unsure why prep is called twice
+	mock.ExpectExec(execRegex).WithArgs(schema, table, "field1, field2, field3",
+		file, s3Info.Region, "GZIP", delimiter, s3Info.AccessID, s3Info.SecretKey).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.RunCSVCopy(tx, schema, table, file, ts, delimiter, true, true))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
 }
 
 func TestRefreshTable(t *testing.T) {
-	schema, name, tmpschema, file, awsRegion, delim := "testschema", "tablename", "testtmpschema", "s3://path", "testRegion", '|'
-	ts := postgres.TableSchema{
-		{3, "field3", "type3", "defaultval3", false, false},
-		{1, "field1", "type1", "", true, false},
-		{2, "field2", "type2", "", false, true},
+	s3Info := S3Info{
+		Region:    "testregion",
+		AccessID:  "accesskey",
+		SecretKey: "secretkey",
 	}
-	copycmd := fmt.Sprintf(`COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' GZIP CSV DELIMITER '%c'`,
-		tmpschema, name, "field1, field2, field3", file, awsRegion, delim)
-	copycmd += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON"
-	copycmd += " CREDENTIALS 'aws_access_key_id=accesskey;aws_secret_access_key=secretkey'"
-	datarefreshcmds := []string{
-		"BEGIN TRANSACTION",
-		fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, name),
-		fmt.Sprintf(`INSERT INTO "%s"."%s" (SELECT * FROM "%s"."%s")`, schema, name, tmpschema, name),
-		"END TRANSACTION",
-	}
-	expcmds := mockSQLDB{
-		fmt.Sprintf(`CREATE TABLE "%s"."%s" (LIKE "%s"."%s")`, tmpschema, name, schema, name),
-		copycmd,
-		strings.Join(datarefreshcmds, "; "),
-		`VACUUM FULL "testschema"."tablename"; ANALYZE "testschema"."tablename"`,
-	}
-	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.refreshTable(schema, name, tmpschema, file, awsRegion, ts, delim)
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	assert.Equal(t, expcmds, cmds)
+	defer db.Close()
+	mockrs := Redshift{db, s3Info}
+	// not really testing GetCSVCopySQL so don't worry too much about this one
+	ts := Table{"Test", []ColInfo{{1, "foo", "int", "4", true, false, false, 0}}, Meta{}}
+	schema, name, file, delim := "testschema", "tablename", "s3://path", '|'
+
+	sql := `COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`
+	sql += " IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
+	sql += ` CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	prepStatement := fmt.Sprintf(sql, "?", "?", "?", "?", "?", "?", "?", "?", "?")
+	execRegex := fmt.Sprintf(sql, ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*", ".*") // slightly awk
+
+	mock.ExpectBegin()
+	// expect a truncate
+	mock.ExpectPrepare(`DELETE FROM "?"."?"`)
+	mock.ExpectPrepare(`DELETE FROM "?"."?"`) // again unsure why it's called twice
+	mock.ExpectExec(`DELETE FROM ".*".".*"`).WithArgs(schema, name).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectPrepare(prepStatement)
+	mock.ExpectPrepare(prepStatement) // unsure why prep is called twice
+	mock.ExpectExec(execRegex).WithArgs(schema, name, "foo",
+		file, s3Info.Region, "GZIP", delim, s3Info.AccessID, s3Info.SecretKey).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	// run the refresh table
+	assert.NoError(t, mockrs.refreshTable(schema, name, file, ts, delim))
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
+func TestRunTruncate(t *testing.T) {
+	schema, table := "test_schema", "test_table"
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db, S3Info{}}
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`DELETE FROM "?"."?"`)
+	mock.ExpectPrepare(`DELETE FROM "?"."?"`) // again unsure why it's called twice
+	mock.ExpectExec(`DELETE FROM ".*".".*"`).WithArgs(schema, table).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.RunTruncate(tx, schema, table))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
 }
 
 func TestVacuumAnalyzeTable(t *testing.T) {
-	schema, table := "testschema", "tablename"
-	expcmds := mockSQLDB{`VACUUM FULL "testschema"."tablename"; ANALYZE "testschema"."tablename"`}
-	cmds := mockSQLDB([]string{})
-	mockrs := Redshift{&cmds, "accesskey", "secretkey"}
-	err := mockrs.VacuumAnalyzeTable(schema, table)
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	assert.Equal(t, expcmds, cmds)
+	defer db.Close()
+	mockrs := Redshift{db, S3Info{}}
+
+	schema, table := "testschema", "tablename"
+	mock.ExpectExec(`VACUUM FULL "testschema"."tablename"`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(`ANALYZE "testschema"."tablename"`).WillReturnResult(sqlmock.NewResult(0, 0))
+	assert.NoError(t, mockrs.VacuumAnalyzeTable(schema, table))
 }
