@@ -69,9 +69,15 @@ func main() {
 		}
 		// do use s3 creds, don't use GZIP
 		// I am not confident this currently works - you may have to set timeformat to 'epochsecs'
-		copySQL := r.GetJSONCopySQL(*schema, *table, exportFile, *jsonpathsFile, true, false)
-		err = r.SafeExec([]string{copySQL})
+		tx, err := r.Begin()
 		if err != nil {
+			log.Fatal(err)
+		}
+		if err := r.RunJSONCopy(tx, *schema, *table, exportFile, *jsonpathsFile, true, false); err != nil {
+			tx.Rollback()
+			log.Fatal(err)
+		}
+		if err := tx.Commit(); err != nil {
 			log.Fatal(err)
 		}
 

@@ -34,7 +34,9 @@ type Meta struct {
 
 Meta holds information that might be not in Redshift or annoying to access in
 this case, we want to know the schema a table is part of and the column which
-corresponds to the timestamp at which the data was gathered
+corresponds to the timestamp at which the data was gathered NOTE: this will be
+useful for the s3-to-redshift worker, but is currently not very useful same with
+the yaml info
 
 #### type Redshift
 
@@ -55,29 +57,6 @@ NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
 
-#### func (*Redshift) GetCSVCopySQL
-
-```go
-func (r *Redshift) GetCSVCopySQL(schema, table, file string, ts Table, delimiter rune, creds, gzip bool) string
-```
-GetCSVCopySQL copies gzipped CSV data from an S3 file into a redshift table.
-
-#### func (*Redshift) GetJSONCopySQL
-
-```go
-func (r *Redshift) GetJSONCopySQL(schema, table, filename, jsonPaths string, creds, gzip bool) string
-```
-GetJSONCopySQL copies JSON data present in an S3 file into a redshift table. if
-not using jsonPaths, set to "auto"
-
-#### func (*Redshift) GetTruncateSQL
-
-```go
-func (r *Redshift) GetTruncateSQL(schema, table string) string
-```
-GetTruncateSQL simply returns SQL that deletes all items from a table, given a
-schema string and a table name
-
 #### func (*Redshift) RefreshTables
 
 ```go
@@ -87,14 +66,31 @@ func (r *Redshift) RefreshTables(
 RefreshTables refreshes multiple tables in parallel and returns an error if any
 of the copies fail.
 
-#### func (*Redshift) SafeExec
+#### func (*Redshift) RunCSVCopy
 
 ```go
-func (r *Redshift) SafeExec(sqlIn []string) error
+func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error
 ```
-SafeExec allows execution of SQL in a transaction block While it seems a little
-dangerous to export such a powerful function, it is very difficult to control
-execution control and actually effectively use this library without this ability
+RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table this is
+meant to be run in a transaction, so the first arg must be a sql.Tx
+
+#### func (*Redshift) RunJSONCopy
+
+```go
+func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths string, creds, gzip bool) error
+```
+RunJSONCopy copies JSON data present in an S3 file into a redshift table. this
+is meant to be run in a transaction, so the first arg must be a sql.Tx if not
+using jsonPaths, set to "auto"
+
+#### func (*Redshift) RunTruncate
+
+```go
+func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error
+```
+RunTruncate deletes all items from a table, given a transaction, a schema string
+and a table name you shuold run vacuum and analyze soon after doing this for
+performance reasons
 
 #### func (*Redshift) VacuumAnalyze
 
@@ -125,32 +121,6 @@ type S3Info struct {
 ```
 
 S3Info holds the information necessary to copy data from s3 buckets
-
-#### type SortableColumns
-
-```go
-type SortableColumns []ColInfo
-```
-
-Just a helper to make sure the CSV copy works properly
-
-#### func (SortableColumns) Len
-
-```go
-func (c SortableColumns) Len() int
-```
-
-#### func (SortableColumns) Less
-
-```go
-func (c SortableColumns) Less(i, j int) bool
-```
-
-#### func (SortableColumns) Swap
-
-```go
-func (c SortableColumns) Swap(i, j int)
-```
 
 #### type Table
 

@@ -14,6 +14,8 @@ import (
 
 type dbExecCloser interface {
 	Close() error
+	Begin() (*sql.Tx, error)
+	Prepare(query string) (*sql.Stmt, error)
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
@@ -61,12 +63,12 @@ type ColInfo struct {
 	SortOrd    int    `yaml:"sortord"`
 }
 
-// Just a helper to make sure the CSV copy works properly
-type SortableColumns []ColInfo
+// A helper to make sure the CSV copy works properly
+type sortableColumns []ColInfo
 
-func (c SortableColumns) Len() int           { return len(c) }
-func (c SortableColumns) Less(i, j int) bool { return c[i].Ordinal < c[j].Ordinal }
-func (c SortableColumns) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c sortableColumns) Len() int           { return len(c) }
+func (c sortableColumns) Less(i, j int) bool { return c[i].Ordinal < c[j].Ordinal }
+func (c sortableColumns) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
 var (
 )
@@ -87,76 +89,98 @@ func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3In
 }
 
 func (r *Redshift) logAndExec(cmd string) (sql.Result, error) {
-	log.Print("Executing Redshift command: ", cmd) // TODO: filter out creds, perhaps
+	log.Printf("Executing Redshift command: %s", cmd)
 	return r.Exec(cmd)
 }
 
-// GetJSONCopySQL copies JSON data present in an S3 file into a redshift table.
+// RunJSONCopy copies JSON data present in an S3 file into a redshift table.
+// this is meant to be run in a transaction, so the first arg must be a sql.Tx
 // if not using jsonPaths, set to "auto"
-func (r *Redshift) GetJSONCopySQL(schema, table, filename, jsonPaths string, creds, gzip bool) string {
-	credSQL := ""
+func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths string, creds, gzip bool) error {
+	var credSQL string
+	var credArgs []interface{}
 	if creds {
-		credSQL = fmt.Sprintf(`CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`, r.s3Info.AccessID, r.s3Info.SecretKey)
+		credSQL = `CREDENTIALS 'aws_access_key_id=?;aws_secret_access_key=?'`
+		credArgs = []interface{}{r.s3Info.AccessID, r.s3Info.SecretKey}
 	}
 	gzipSQL := ""
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copyCmd := fmt.Sprintf(
-		`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' COMPUPDATE ON %s`,
-		schema, table, filename, gzipSQL, jsonPaths, r.s3Info.Region, credSQL)
-	return copyCmd
+	copySQL := `COPY "?"."?" FROM '?' WITH ? JSON '?' REGION '?' TIMEFORMAT 'auto' STATUPDATE COMPUPDATE ON %s`
+	copyStmt, err := r.Prepare(fmt.Sprintf(copySQL, credSQL))
+	if err != nil {
+		return err
+	}
+	args := []interface{}{schema, table, filename, gzipSQL, jsonPaths, r.s3Info.Region}
+	log.Printf("Running command: %s with args: %v", copySQL, args)
+	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
+	return err
 }
 
-// GetCSVCopySQL copies gzipped CSV data from an S3 file into a redshift table.
-func (r *Redshift) GetCSVCopySQL(schema, table, file string, ts Table, delimiter rune, creds, gzip bool) string {
-	credSQL := ""
+// RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table
+// this is meant to be run in a transaction, so the first arg must be a sql.Tx
+func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error {
+	var credSQL string
+	var credArgs []interface{}
 	if creds {
-		credSQL = fmt.Sprintf(`CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`, r.s3Info.AccessID, r.s3Info.SecretKey)
+		credSQL = `CREDENTIALS 'aws_access_key_id=?;aws_secret_access_key=?'`
+		credArgs = []interface{}{r.s3Info.AccessID, r.s3Info.SecretKey}
 	}
 	gzipSQL := ""
 	if gzip {
 		gzipSQL = "GZIP"
 	}
 
-	cols := SortableColumns{}
+	cols := sortableColumns{}
 	cols = append(cols, ts.Columns...)
 	sort.Sort(cols)
 	colStrings := []string{}
 	for _, ci := range cols {
 		colStrings = append(colStrings, ci.Name)
 	}
-	copyCmd := fmt.Sprintf(
-		`COPY "%s"."%s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%c'`,
-		schema, table, strings.Join(colStrings, ", "), file, r.s3Info.Region, gzipSQL, delimiter)
-	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE COMPUPDATE ON"
-	fullCopyCmd := fmt.Sprintf("%s %s %s", copyCmd, opts, credSQL)
-	return fullCopyCmd
-}
 
-// SafeExec allows execution of SQL in a transaction block
-// While it seems a little dangerous to export such a powerful function, it is very difficult
-// to control execution control and actually effectively use this library without this ability
-func (r *Redshift) SafeExec(sqlIn []string) error {
-	cmds := append([]string{"BEGIN TRANSACTION"}, sqlIn...)
-	cmds = append(cmds, "END TRANSACTION")
-	_, err := r.logAndExec(strings.Join(cmds, "; "))
+	copySQL := fmt.Sprintf(`COPY "?"."?" (?) FROM '?' WITH REGION '?' ? CSV DELIMITER '?'`)
+	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE COMPUPDATE ON"
+	fullCopySQL := fmt.Sprintf("%s %s %s", copySQL, opts, credSQL)
+	copyStmt, err := r.Prepare(fullCopySQL)
+	if err != nil {
+		return err
+	}
+	args := []interface{}{schema, table, strings.Join(colStrings, ", "), file, r.s3Info.Region, gzipSQL, delimiter}
+	log.Printf("Running command: %s with args: %v", fullCopySQL, args)
+	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
 	return err
 }
 
-// GetTruncateSQL simply returns SQL that deletes all items from a table, given a schema string and a table name
-func (r *Redshift) GetTruncateSQL(schema, table string) string {
-	return fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table)
+// RunTruncate deletes all items from a table, given a transaction, a schema string and a table name
+// you shuold run vacuum and analyze soon after doing this for performance reasons
+func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
+	truncStmt, err := r.Prepare(`DELETE FROM "?"."?"`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Stmt(truncStmt).Exec(schema, table)
+	return err
 }
 
 // RefreshTable refreshes a single table by copying gzipped CSV data into a temporary table
 // and later replacing the original table's data with the one from the temporary table in an
 // atomic operation.
 func (r *Redshift) refreshTable(schema, name, file string, ts Table, delim rune) error {
-	truncateSQL := r.GetTruncateSQL(schema, name)
-	copySQL := r.GetCSVCopySQL(schema, name, file, ts, delim, true, true)
-	err := r.SafeExec([]string{truncateSQL, copySQL})
+	tx, err := r.Begin()
 	if err != nil {
+		return err
+	}
+	if err = r.RunTruncate(tx, schema, name); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err = r.RunCSVCopy(tx, schema, name, file, ts, delim, true, true); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 	return r.VacuumAnalyzeTable(schema, name)
