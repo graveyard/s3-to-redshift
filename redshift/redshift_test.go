@@ -126,6 +126,29 @@ func TestRefreshTable(t *testing.T) {
 	}
 }
 
+func TestRunTruncate(t *testing.T) {
+	schema, table := "test_schema", "test_table"
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db, S3Info{}}
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`DELETE FROM "?"."?"`)
+	mock.ExpectPrepare(`DELETE FROM "?"."?"`) // again unsure why it's called twice
+	mock.ExpectExec(`DELETE FROM ".*".".*"`).WithArgs(schema, table).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.RunTruncate(tx, schema, table))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
 func TestVacuumAnalyzeTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
