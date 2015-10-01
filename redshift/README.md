@@ -51,11 +51,28 @@ redshift database.
 #### func  NewRedshift
 
 ```go
-func NewRedshift(host, port, db, user, password string) (*Redshift, error)
+func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error)
 ```
 NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
+
+#### func (*Redshift) GetTableFromConf
+
+```go
+func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error)
+```
+it's a little awkward to turn the moSQL format into what I want, this belongs
+here - redshift should not have to know about s3 files really
+
+#### func (*Redshift) GetTableMetadata
+
+```go
+func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Table, time.Time, error)
+```
+GetTableMetadata looks for a table and returns both the Table representation of
+the db table and the last data in the table, if that exists if the table does
+not exist it returns an empty table but does not error
 
 #### func (*Redshift) RefreshTables
 
@@ -69,15 +86,21 @@ of the copies fail.
 #### func (*Redshift) RunCSVCopy
 
 ```go
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error
+func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, delimiter rune, creds, gzip bool) error
 ```
 RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table this is
-meant to be run in a transaction, so the first arg must be a sql.Tx
+meant to be run in a transaction, so the first arg must be a pg.Tx
+
+#### func (*Redshift) RunCreateTable
+
+```go
+func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error
+```
 
 #### func (*Redshift) RunJSONCopy
 
 ```go
-func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths string, creds, gzip bool) error
+func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error
 ```
 RunJSONCopy copies JSON data present in an S3 file into a redshift table. this
 is meant to be run in a transaction, so the first arg must be a sql.Tx if not
@@ -91,6 +114,13 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error
 RunTruncate deletes all items from a table, given a transaction, a schema string
 and a table name you shuold run vacuum and analyze soon after doing this for
 performance reasons
+
+#### func (*Redshift) RunUpdateTable
+
+```go
+func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) error
+```
+only supports adding columns currently
 
 #### func (*Redshift) VacuumAnalyze
 

@@ -4,11 +4,16 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"sort"
 	"strings"
+	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
+	_ "github.com/lib/pq" // Postgres driver.
 
 	"github.com/Clever/redshifter/s3filepath"
 	"github.com/facebookgo/errgroup"
@@ -19,6 +24,8 @@ type dbExecCloser interface {
 	Begin() (*sql.Tx, error)
 	Prepare(query string) (*sql.Stmt, error)
 	Exec(query string, args ...interface{}) (sql.Result, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
 // S3Info holds the information necessary to copy data from s3 buckets
@@ -116,7 +123,7 @@ WHERE c.relkind = 'r'::char
 // Don't need to pass s3 info unless doing a COPY operation
 func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error) {
 	flag.Parse()
-	source := fmt.Sprintf("host=%s port=%d dbname=%s connect_timeout=%d", host, port, db, timeout)
+	source := fmt.Sprintf("host=%s port=%s dbname=%s connect_timeout=%d", host, port, db, timeout)
 	log.Println("Connecting to Redshift Source: ", source)
 	source += fmt.Sprintf(" user=%s password=%s", user, password)
 	sqldb, err := sql.Open("postgres", source)
@@ -166,39 +173,210 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error) {
 	return t, nil
 }
 
+// GetTableMetadata looks for a table and returns both the Table representation
+// of the db table and the last data in the table, if that exists
+// if the table does not exist it returns an empty table but does not error
+func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Table, time.Time, error) {
+	var retTable Table
+	var lastData time.Time
+	var cols []ColInfo
+
+	// does the table exist?
+	//var placeholder string
+	//q := fmt.Sprintf(existQueryFormat, schema, tableName)
+	//if _, err := r.QueryOne(&placeholder, q); err != nil {
+	//if err == pg.ErrNoRows {
+	//return retTable, lastData, nil
+	//}
+	//return retTable, lastData, fmt.Errorf("issue just checking if the table exists: %s", err)
+	//}
+	var placeholder string
+	q := fmt.Sprintf(existQueryFormat, schema, tableName)
+	if err := r.QueryRow(q).Scan(&placeholder); err != nil {
+		if err == sql.ErrNoRows {
+			return retTable, lastData, nil
+		}
+		return retTable, lastData, fmt.Errorf("issue just checking if the table exists: %s", err)
+	}
+
+	// table exists, what are the columns?
+	//_, err := r.Query(&retTable, fmt.Sprintf(schemaQueryFormat, schema, tableName), nil)
+	//if err != nil {
+	//return retTable, lastData, fmt.Errorf("issue running column query: %s, err: %s", schemaQueryFormat, err)
+	//}
+	rows, err := r.Query(fmt.Sprintf(schemaQueryFormat, schema, tableName))
+	if err != nil {
+		return retTable, lastData, fmt.Errorf("issue running column query: %s, err: %s", schemaQueryFormat, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var c ColInfo
+		if err := rows.Scan(&c.Ordinal, &c.Name, &c.Type, &c.DefaultVal, &c.NotNull,
+			&c.PrimaryKey, &c.DistKey, &c.SortOrdinal,
+		); err != nil {
+			return retTable, lastData, fmt.Errorf("issue scanning column, err: %s", err)
+		}
+
+		cols = append(cols, c)
+	}
+	if err := rows.Err(); err != nil {
+		return retTable, lastData, fmt.Errorf("issue iterating over columns, err: %s", err)
+	}
+
+	// turn into Table struct
+	retTable = Table{
+		Name:    tableName,
+		Columns: cols,
+		Meta: Meta{
+			DataDateColumn: dataDateCol,
+			Schema:         schema,
+		},
+	}
+
+	// what's the last data in the table?
+	// TODO: make a prepared statement
+	//lastDataQuery := fmt.Sprintf("SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1",
+	//dataDateCol, schema, tableName, dataDateCol)
+	//if _, err = r.QueryOne(&lastData, lastDataQuery); err != nil {
+	//return retTable, lastData, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
+	//}
+	lastDataQuery := fmt.Sprintf("SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1",
+		dataDateCol, schema, tableName, dataDateCol)
+	if err = r.QueryRow(lastDataQuery).Scan(&lastData); err != nil {
+		return retTable, lastData, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
+	}
+	return retTable, lastData, nil
+}
+
+func getColumnSQL(c ColInfo) string {
+	// note that we are relying on redshift to fail if we have created multiple sort keys
+	// currently we don't support that
+	defaultVal := ""
+	if c.DefaultVal != "" {
+		defaultVal = fmt.Sprintf("DEFAULT %s", c.DefaultVal)
+	}
+	notNull := ""
+	if c.NotNull {
+		notNull = "NOT NULL"
+	}
+	primaryKey := ""
+	if c.PrimaryKey {
+		primaryKey = "PRIMARY KEY"
+	}
+	sortKey := ""
+	if c.SortOrdinal == 1 {
+		sortKey = "SORTKEY"
+	}
+	distKey := ""
+	if c.DistKey {
+		distKey = "DISTKEY"
+	}
+
+	return fmt.Sprintf("%s %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
+	//return []interface{}{c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey}
+}
+
+func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error {
+	var columnSQL []string
+	for _, c := range table.Columns {
+		columnSQL = append(columnSQL, getColumnSQL(c))
+	}
+	args := []interface{}{strings.Join(columnSQL, ",")}
+	// for some reason the prepare here was wonky TODO come back and fix
+	createSQL := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, table.Meta.Schema, table.Name, strings.Join(columnSQL, ","))
+	createStmt, err := tx.Prepare(createSQL)
+	if err != nil {
+		return fmt.Errorf("issue preparing statement: %s", err)
+	}
+
+	log.Printf("Running command: %s with args: %v", createSQL, args)
+	_, err = createStmt.Exec()
+	return err
+}
+
+// only supports adding columns currently
+func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
+	columnOps := []string{}
+	for _, inCol := range inputTable.Columns {
+		var existingCol ColInfo
+		// yes, n^2, but how many are we really going to have, and I want to keep the ordering
+		// ignore if there are extra columns
+		for _, targetCol := range targetTable.Columns {
+			if inCol.Name == targetCol.Name {
+				mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
+				if inCol.Ordinal != targetCol.Ordinal {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "Ordinal", inCol.Ordinal, targetCol.Ordinal)
+				}
+				if typeMapping[inCol.Type] != targetCol.Type {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type)
+				}
+				if inCol.DefaultVal != targetCol.DefaultVal {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal)
+				}
+				if inCol.NotNull != targetCol.NotNull {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull)
+				}
+				if inCol.PrimaryKey != targetCol.PrimaryKey {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey)
+				}
+				if inCol.DistKey != targetCol.DistKey {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey)
+				}
+				if inCol.SortOrdinal != targetCol.SortOrdinal {
+					return fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal)
+				}
+
+				existingCol = targetCol
+				break
+			}
+		}
+		var emptyCol ColInfo
+		if existingCol == emptyCol {
+			columnOps = append(columnOps, fmt.Sprintf("ADD COLUMN %s ", getColumnSQL(inCol)))
+		}
+	}
+	if len(columnOps) == 0 {
+		log.Println("no update necessary")
+		return nil
+	}
+
+	alterSQL := fmt.Sprintf(`ALTER TABLE "%s."%s" %s`, targetTable.Meta.Schema, targetTable.Name, strings.Join(columnOps, ","))
+
+	log.Printf("Running command: %s", alterSQL)
+	_, err := tx.Exec(alterSQL)
+	return err
+}
+
 // RunJSONCopy copies JSON data present in an S3 file into a redshift table.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
 // if not using jsonPaths, set to "auto"
-func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths string, creds, gzip bool) error {
+func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
 	if creds {
-		credSQL = `CREDENTIALS 'aws_access_key_id=?;aws_secret_access_key=?'`
-		credArgs = []interface{}{r.s3Info.AccessID, r.s3Info.SecretKey}
+		credSQL = `CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+		credArgs = []interface{}{f.AccessID, f.SecretKey}
 	}
 	gzipSQL := ""
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copySQL := `COPY "?"."?" FROM '?' WITH ? JSON '?' REGION '?' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`
-	copyStmt, err := r.Prepare(fmt.Sprintf(copySQL, credSQL))
-	if err != nil {
-		return err
-	}
-	args := []interface{}{schema, table, filename, gzipSQL, jsonPaths, r.s3Info.Region}
-	log.Printf("Running command: %s with args: %v", copySQL, args)
-	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JsonPaths, f.Region, credSQL)
+	//args := []interface{}{f.Schema, f.Table, gzipSQL, f.Filename, f.JsonPaths, f.Region, credSQL}
+	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
+	log.Printf("Running command: %s", copySQL)
+	_, err := tx.Exec(fullCopySQL)
 	return err
 }
 
 // RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table
-// this is meant to be run in a transaction, so the first arg must be a sql.Tx
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error {
+// this is meant to be run in a transaction, so the first arg must be a pg.Tx
+func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, delimiter rune, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
 	if creds {
-		credSQL = `CREDENTIALS 'aws_access_key_id=?;aws_secret_access_key=?'`
-		credArgs = []interface{}{r.s3Info.AccessID, r.s3Info.SecretKey}
+		credSQL = `CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+		credArgs = []interface{}{f.AccessID, f.SecretKey}
 	}
 	gzipSQL := ""
 	if gzip {
@@ -213,42 +391,42 @@ func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, 
 		colStrings = append(colStrings, ci.Name)
 	}
 
-	copySQL := fmt.Sprintf(`COPY "?"."?" (?) FROM '?' WITH REGION '?' ? CSV DELIMITER '?'`)
+	args := []interface{}{f.Schema, f.Table, strings.Join(colStrings, ", "), f.Filename, f.Region, gzipSQL, delimiter}
+	baseCopySQL := fmt.Sprintf(`COPY "%s"."s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`, args...)
 	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
-	fullCopySQL := fmt.Sprintf("%s %s %s", copySQL, opts, credSQL)
-	copyStmt, err := r.Prepare(fullCopySQL)
+	fullCopySQL := fmt.Sprintf("%s %s %s", baseCopySQL, opts, credSQL)
+	copyStmt, err := tx.Prepare(fmt.Sprintf(fullCopySQL, credArgs...))
 	if err != nil {
 		return err
 	}
-	args := []interface{}{schema, table, strings.Join(colStrings, ", "), file, r.s3Info.Region, gzipSQL, delimiter}
-	log.Printf("Running command: %s with args: %v", fullCopySQL, args)
-	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
+	log.Printf("Running command: %s", fullCopySQL)
+	_, err = copyStmt.Exec()
 	return err
 }
 
 // RunTruncate deletes all items from a table, given a transaction, a schema string and a table name
 // you shuold run vacuum and analyze soon after doing this for performance reasons
 func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
-	truncStmt, err := r.Prepare(`DELETE FROM "?"."?"`)
+	truncStmt, err := tx.Prepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
 	if err != nil {
 		return err
 	}
-	_, err = tx.Stmt(truncStmt).Exec(schema, table)
+	_, err = truncStmt.Exec()
 	return err
 }
 
 // RefreshTable refreshes a single table by truncating it and COPY-ing gzipped CSV data into it
 // This is done within a transaction for safety
-func (r *Redshift) refreshTable(schema, name, file string, ts Table, delim rune) error {
+func (r *Redshift) refreshTable(f s3filepath.S3File, ts Table, delim rune) error {
 	tx, err := r.Begin()
 	if err != nil {
 		return err
 	}
-	if err = r.RunTruncate(tx, schema, name); err != nil {
+	if err = r.RunTruncate(tx, f.Schema, f.Table); err != nil {
 		tx.Rollback()
 		return err
 	}
-	if err = r.RunCSVCopy(tx, schema, name, file, ts, delim, true, true); err != nil {
+	if err = r.RunCSVCopy(tx, f, ts, delim, true, true); err != nil {
 		tx.Rollback()
 		return err
 	}

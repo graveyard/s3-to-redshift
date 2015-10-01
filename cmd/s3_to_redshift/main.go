@@ -109,7 +109,7 @@ func main() {
 	if port == "" {
 		port = "5439"
 	}
-	db, err := redshift.NewRedshift(host, port, dbName, user, pwd)
+	db, err := redshift.NewRedshift(host, port, dbName, user, pwd, 10)
 	fatalIfErr(err, "error getting redshift instance")
 
 	// for each table passed in - likely we could goroutine this out
