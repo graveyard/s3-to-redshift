@@ -28,13 +28,6 @@ type dbExecCloser interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
-// S3Info holds the information necessary to copy data from s3 buckets
-type S3Info struct {
-	Region    string
-	AccessID  string
-	SecretKey string
-}
-
 // Redshift wraps a dbExecCloser and can be used to perform operations on a redshift database.
 type Redshift struct {
 	dbExecCloser
