@@ -51,7 +51,7 @@ redshift database.
 #### func  NewRedshift
 
 ```go
-func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3Info) (*Redshift, error)
+func NewRedshift(host, port, db, user, password string) (*Redshift, error)
 ```
 NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
@@ -61,7 +61,7 @@ need to pass s3 info unless doing a COPY operation
 
 ```go
 func (r *Redshift) RefreshTables(
-	tables map[string]Table, schema, s3prefix string, delim rune) error
+	tables map[string]Table, awsRegion, awsAccessID, awsSecretKey, bucket, schema string, delim rune) error
 ```
 RefreshTables refreshes multiple tables in parallel and returns an error if any
 of the copies fail.
@@ -109,18 +109,6 @@ func (r *Redshift) VacuumAnalyzeTable(schema, table string) error
 VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is
 useful for recreating the indices after a database has been modified and
 updating the query planner.
-
-#### type S3Info
-
-```go
-type S3Info struct {
-	Region    string
-	AccessID  string
-	SecretKey string
-}
-```
-
-S3Info holds the information necessary to copy data from s3 buckets
 
 #### type Table
 

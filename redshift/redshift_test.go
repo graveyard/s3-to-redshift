@@ -9,7 +9,7 @@ import (
 )
 
 func TestGetJSONCopySQL(t *testing.T) {
-	s3Info := S3Info{
+	s3Info := s3filepath.S3Info{
 		Region:    "testregion",
 		AccessID:  "accesskey",
 		SecretKey: "secretkey",
@@ -22,7 +22,7 @@ func TestGetJSONCopySQL(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockrs := Redshift{db, s3Info}
+	mockrs := Redshift{db}
 
 	mock.ExpectBegin()
 	mock.ExpectPrepare(prepStatement)
@@ -42,7 +42,7 @@ func TestGetJSONCopySQL(t *testing.T) {
 }
 
 func TestCopyGzipCsvDataFromS3(t *testing.T) {
-	s3Info := S3Info{
+	s3Info := s3filepath.S3Info{
 		Region:    "testregion",
 		AccessID:  "accesskey",
 		SecretKey: "secretkey",
@@ -87,7 +87,7 @@ func TestCopyGzipCsvDataFromS3(t *testing.T) {
 }
 
 func TestRefreshTable(t *testing.T) {
-	s3Info := S3Info{
+	s3Info := s3filepath.S3Info{
 		Region:    "testregion",
 		AccessID:  "accesskey",
 		SecretKey: "secretkey",
@@ -130,7 +130,7 @@ func TestRunTruncate(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockrs := Redshift{db, S3Info{}}
+	mockrs := Redshift{db, s3filepath.S3Info{}}
 
 	mock.ExpectBegin()
 	mock.ExpectPrepare(`DELETE FROM "?"."?"`)
@@ -152,7 +152,7 @@ func TestVacuumAnalyzeTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockrs := Redshift{db, S3Info{}}
+	mockrs := Redshift{db, s3filepath.S3Info{}}
 
 	schema, table := "testschema", "tablename"
 	mock.ExpectExec(`VACUUM FULL "testschema"."tablename"`).WillReturnResult(sqlmock.NewResult(0, 0))
