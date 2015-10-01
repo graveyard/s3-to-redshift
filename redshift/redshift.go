@@ -384,7 +384,7 @@ func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, delimit
 		colStrings = append(colStrings, ci.Name)
 	}
 
-	args := []interface{}{f.Schema, f.Table, strings.Join(colStrings, ", "), f.Filename, f.Region, gzipSQL, delimiter}
+	args := []interface{}{f.Schema, f.Table, strings.Join(colStrings, ", "), f.GetDataFilename(), f.Region, gzipSQL, delimiter}
 	baseCopySQL := fmt.Sprintf(`COPY "%s"."s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`, args...)
 	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
 	fullCopySQL := fmt.Sprintf("%s %s %s", baseCopySQL, opts, credSQL)
@@ -434,8 +434,7 @@ func (r *Redshift) RefreshTables(
 	for name, ts := range tables {
 		group.Add(1)
 		go func(name string, ts Table) {
-			file := fmt.Sprintf("s3://%s/%s.txt.gz", bucket, name) // taken from postgres library
-			s3File := s3filepath.S3File{awsRegion, awsAccessID, awsSecretKey, bucket, schema, name, file, "", delim, time.Time{}}
+			s3File := s3filepath.S3File{awsRegion, awsAccessID, awsSecretKey, bucket, schema, name, "", "txt.gz", delim, time.Time{}}
 			if err := r.refreshTable(s3File, ts, delim); err != nil {
 				group.Error(err)
 			}

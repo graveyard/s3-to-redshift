@@ -17,8 +17,8 @@ type S3File struct {
 	Bucket    string // decide to keep this as string for simplicity
 	Schema    string
 	Table     string
-	Filename  string
 	JsonPaths string
+	Suffix    string
 	Delimiter rune
 	DataDate  time.Time
 }

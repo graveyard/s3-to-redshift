@@ -24,14 +24,14 @@ type S3File struct {
 	Bucket    string // decide to keep this as string for simplicity
 	Schema    string
 	Table     string
-	Filename  string
 	JsonPaths string
+	Suffix    string
 	Delimiter rune
 	DataDate  time.Time
 }
 
 func (f *S3File) GetDataFilename() string {
-	return fmt.Sprintf("s3://%s/%s_%s_%s.json.gz", f.Bucket, f.Schema, f.Table, f.DataDate.Format(time.RFC3339))
+	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket, f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
 }
 
 func (f *S3File) GetConfigFilename() string {
@@ -71,7 +71,8 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table string, beforeDate
 			// only want dates after or equal to the time requested - for instance the time in the db
 			// match rounded date, for instance we might be computing daily or hourly
 			if !date.Before(beforeDate) {
-				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, item.Key, "", ' ', date}
+				// hardcode json.gz
+				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, item.Key, "json.gz", ' ', date}
 				if err != nil {
 					return retFile, err
 				}

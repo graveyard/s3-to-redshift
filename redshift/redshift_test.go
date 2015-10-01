@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Clever/redshifter/s3filename"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 )
@@ -13,6 +14,10 @@ func TestGetJSONCopySQL(t *testing.T) {
 		Region:    "testregion",
 		AccessID:  "accesskey",
 		SecretKey: "secretkey",
+		Bucket:    "path",
+		Schema:    "testschema",
+		Table:     "tablename",
+		JsonPaths: "",
 	}
 	schema, table, file, jsonpathsFile := "testschema", "tablename", "s3://path", "s3://jsonpathsfile"
 	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
@@ -27,13 +32,12 @@ func TestGetJSONCopySQL(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectPrepare(prepStatement)
 	mock.ExpectPrepare(prepStatement) // unsure why prep is called twice
-	mock.ExpectExec(execRegex).WithArgs(schema, table, file, "GZIP", jsonpathsFile,
-		s3Info.Region, s3Info.AccessID, s3Info.SecretKey).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunJSONCopy(tx, schema, table, file, jsonpathsFile, true, true))
+	assert.NoError(t, mockrs.RunJSONCopy(tx, s3Info, true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
