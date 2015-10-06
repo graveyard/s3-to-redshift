@@ -76,7 +76,7 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf stri
 					confFile = suppliedConf
 				}
 				// hardcode json.gz
-				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, item.Key, "json.gz", ' ', date, confFile}
+				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, "auto", "json.gz", ' ', date, confFile}
 				if err != nil {
 					return retFile, err
 				}

@@ -77,8 +77,8 @@ var (
 		"boolean":   "boolean",
 		"float":     "float",
 		"int":       "int",
-		"timestamp": "timestamp",              // timestamp with timezone is not supported in redshift
-		"text":      "character varying(256)", // unfortunately redshift turns text -> varchar 256
+		"timestamp": "timestamp without time zone", // timestamp with timezone is not supported in redshift
+		"text":      "character varying(256)",      // unfortunately redshift turns text -> varchar 256
 	}
 
 	// TODO: use parameter placeholder syntax instead
@@ -332,7 +332,7 @@ func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) err
 		return nil
 	}
 
-	alterSQL := fmt.Sprintf(`ALTER TABLE "%s."%s" %s`, targetTable.Meta.Schema, targetTable.Name, strings.Join(columnOps, ","))
+	alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" %s`, targetTable.Meta.Schema, targetTable.Name, strings.Join(columnOps, ","))
 
 	log.Printf("Running command: %s", alterSQL)
 	_, err := tx.Exec(alterSQL)
