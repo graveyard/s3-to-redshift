@@ -34,9 +34,7 @@ type Meta struct {
 
 Meta holds information that might be not in Redshift or annoying to access in
 this case, we want to know the schema a table is part of and the column which
-corresponds to the timestamp at which the data was gathered NOTE: this will be
-useful for the s3-to-redshift worker, but is currently not very useful same with
-the yaml info
+corresponds to the timestamp at which the data was gathered
 
 #### type Redshift
 
@@ -150,5 +148,4 @@ type Table struct {
 }
 ```
 
-Table is our representation of a Redshift table the main difference is an added
-metadata section and YAML unmarshalling guidance
+Table is our representation of a Redshift table

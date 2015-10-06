@@ -21,6 +21,7 @@ type S3File struct {
 	Suffix    string
 	Delimiter rune
 	DataDate  time.Time
+	ConfFile  string
 }
 ```
 
@@ -28,17 +29,11 @@ type S3File struct {
 #### func  FindLatestInputData
 
 ```go
-func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table string, beforeDate time.Time) (S3File, error)
+func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, beforeDate time.Time) (S3File, error)
 ```
 FindLatestS3FileData looks for the most recent file matching the prefix created
 by <schema>_<table> since the date passed in, using the RFC3999 date in the
 filename
-
-#### func (*S3File) GetConfigFilename
-
-```go
-func (f *S3File) GetConfigFilename() string
-```
 
 #### func (*S3File) GetDataFilename
 

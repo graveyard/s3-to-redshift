@@ -34,7 +34,6 @@ type Redshift struct {
 }
 
 // Table is our representation of a Redshift table
-// the main difference is an added metadata section and YAML unmarshalling guidance
 type Table struct {
 	Name    string    `yaml:"dest"`
 	Columns []ColInfo `yaml:"columns"`
@@ -44,8 +43,6 @@ type Table struct {
 // Meta holds information that might be not in Redshift or annoying to access
 // in this case, we want to know the schema a table is part of
 // and the column which corresponds to the timestamp at which the data was gathered
-// NOTE: this will be useful for the s3-to-redshift worker, but is currently not very useful
-// same with the yaml info
 type Meta struct {
 	DataDateColumn string `yaml:"datadatecolumn"`
 	Schema         string `yaml:"schema"`
@@ -174,14 +171,6 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Tabl
 	var cols []ColInfo
 
 	// does the table exist?
-	//var placeholder string
-	//q := fmt.Sprintf(existQueryFormat, schema, tableName)
-	//if _, err := r.QueryOne(&placeholder, q); err != nil {
-	//if err == pg.ErrNoRows {
-	//return retTable, lastData, nil
-	//}
-	//return retTable, lastData, fmt.Errorf("issue just checking if the table exists: %s", err)
-	//}
 	var placeholder string
 	q := fmt.Sprintf(existQueryFormat, schema, tableName)
 	if err := r.QueryRow(q).Scan(&placeholder); err != nil {
@@ -192,10 +181,6 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Tabl
 	}
 
 	// table exists, what are the columns?
-	//_, err := r.Query(&retTable, fmt.Sprintf(schemaQueryFormat, schema, tableName), nil)
-	//if err != nil {
-	//return retTable, lastData, fmt.Errorf("issue running column query: %s, err: %s", schemaQueryFormat, err)
-	//}
 	rows, err := r.Query(fmt.Sprintf(schemaQueryFormat, schema, tableName))
 	if err != nil {
 		return retTable, lastData, fmt.Errorf("issue running column query: %s, err: %s", schemaQueryFormat, err)
@@ -226,12 +211,6 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Tabl
 	}
 
 	// what's the last data in the table?
-	// TODO: make a prepared statement
-	//lastDataQuery := fmt.Sprintf("SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1",
-	//dataDateCol, schema, tableName, dataDateCol)
-	//if _, err = r.QueryOne(&lastData, lastDataQuery); err != nil {
-	//return retTable, lastData, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
-	//}
 	lastDataQuery := fmt.Sprintf("SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1",
 		dataDateCol, schema, tableName, dataDateCol)
 	if err = r.QueryRow(lastDataQuery).Scan(&lastData); err != nil {
@@ -354,7 +333,6 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 		gzipSQL = "GZIP"
 	}
 	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JsonPaths, f.Region, credSQL)
-	//args := []interface{}{f.Schema, f.Table, gzipSQL, f.Filename, f.JsonPaths, f.Region, credSQL}
 	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
 	_, err := tx.Exec(fullCopySQL)
