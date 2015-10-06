@@ -363,7 +363,7 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 
 // RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table
 // this is meant to be run in a transaction, so the first arg must be a pg.Tx
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, delimiter rune, creds, gzip bool) error {
+func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
 	if creds {
@@ -383,7 +383,7 @@ func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, delimit
 		colStrings = append(colStrings, ci.Name)
 	}
 
-	args := []interface{}{f.Schema, f.Table, strings.Join(colStrings, ", "), f.GetDataFilename(), f.Region, gzipSQL, delimiter}
+	args := []interface{}{f.Schema, f.Table, strings.Join(colStrings, ", "), f.GetDataFilename(), f.Region, gzipSQL, f.Delimiter}
 	baseCopySQL := fmt.Sprintf(`COPY "%s"."s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`, args...)
 	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
 	fullCopySQL := fmt.Sprintf("%s %s %s", baseCopySQL, opts, credSQL)
@@ -409,7 +409,7 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
 
 // RefreshTable refreshes a single table by truncating it and COPY-ing gzipped CSV data into it
 // This is done within a transaction for safety
-func (r *Redshift) refreshTable(f s3filepath.S3File, ts Table, delim rune) error {
+func (r *Redshift) refreshTable(f s3filepath.S3File, ts Table) error {
 	tx, err := r.Begin()
 	if err != nil {
 		return err
@@ -418,7 +418,7 @@ func (r *Redshift) refreshTable(f s3filepath.S3File, ts Table, delim rune) error
 		tx.Rollback()
 		return err
 	}
-	if err = r.RunCSVCopy(tx, f, ts, delim, true, true); err != nil {
+	if err = r.RunCSVCopy(tx, f, ts, true, true); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -437,7 +437,7 @@ func (r *Redshift) RefreshTables(
 			now := time.Time{}
 			confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket, schema, name, now.Format(time.RFC3339))
 			s3File := s3filepath.S3File{awsRegion, awsAccessID, awsSecretKey, bucket, schema, name, "", "txt.gz", delim, now, confFile}
-			if err := r.refreshTable(s3File, ts, delim); err != nil {
+			if err := r.refreshTable(s3File, ts); err != nil {
 				group.Error(err)
 			}
 			group.Done()
