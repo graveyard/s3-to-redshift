@@ -27,6 +27,7 @@ var (
 	inputSchemaName = flag.String("schema", "mongo", "what schema we process")
 	inputTables     = flag.String("tables", "", "tables to run on, comma separated")
 	s3Prefix        = flag.String("s3prefix", "metrics", "bucket to load into, including s3:// protocol")
+	configFile      = flag.String("config", "", "schema & table config to use in YAML format")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host               = os.Getenv("REDSHIFT_HOST")
@@ -123,7 +124,7 @@ func main() {
 		}
 		// each input will have a configuration associated with it, output by the previous worker
 		// TODO: allow a passed-in parameter so that we don't necessarily have to write a config for each piece of data
-		inputConf, err := s3filepath.FindLatestInputData(s3Conn, *s3Prefix, *inputSchemaName, t, dataDate.UTC())
+		inputConf, err := s3filepath.FindLatestInputData(s3Conn, *s3Prefix, *inputSchemaName, t, *configFile, dataDate.UTC())
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
 
 		inputTable, err := db.GetTableFromConf(inputConf) // allow passing explicit config later

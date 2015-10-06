@@ -137,9 +137,8 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error) {
 	var tempSchema map[string]Table
 	var emptyTable Table
 
-	confFile := f.GetConfigFilename()
-	log.Printf("Parsing file: %s", confFile)
-	reader, err := pathio.Reader(confFile)
+	log.Printf("Parsing file: %s", f.ConfFile)
+	reader, err := pathio.Reader(f.ConfFile)
 	if err != nil {
 		return emptyTable, fmt.Errorf("error opening conf file: %s", err)
 	}
@@ -148,7 +147,7 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error) {
 		return emptyTable, err
 	}
 	if err := yaml.Unmarshal(data, &tempSchema); err != nil {
-		return emptyTable, fmt.Errorf("Warning: could not parse file %s, err: %s\n", confFile, err)
+		return emptyTable, fmt.Errorf("Warning: could not parse file %s, err: %s\n", f.ConfFile, err)
 	}
 
 	// data we want is nested in a map - possible to have multiple tables in a conf file
@@ -433,8 +432,11 @@ func (r *Redshift) RefreshTables(
 	group := new(errgroup.Group)
 	for name, ts := range tables {
 		group.Add(1)
+
 		go func(name string, ts Table) {
-			s3File := s3filepath.S3File{awsRegion, awsAccessID, awsSecretKey, bucket, schema, name, "", "txt.gz", delim, time.Time{}}
+			now := time.Time{}
+			confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket, schema, name, now.Format(time.RFC3339))
+			s3File := s3filepath.S3File{awsRegion, awsAccessID, awsSecretKey, bucket, schema, name, "", "txt.gz", delim, now, confFile}
 			if err := r.refreshTable(s3File, ts, delim); err != nil {
 				group.Error(err)
 			}

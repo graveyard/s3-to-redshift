@@ -28,14 +28,11 @@ type S3File struct {
 	Suffix    string
 	Delimiter rune
 	DataDate  time.Time
+	ConfFile  string
 }
 
 func (f *S3File) GetDataFilename() string {
 	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket, f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
-}
-
-func (f *S3File) GetConfigFilename() string {
-	return fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", f.Bucket, f.Schema, f.Table, f.DataDate.Format(time.RFC3339))
 }
 
 // We need to sort by data timestamp to find the most recent s3 file
@@ -47,8 +44,9 @@ func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // r
 
 // FindLatestS3FileData looks for the most recent file matching the prefix
 // created by <schema>_<table> since the date passed in, using the RFC3999 date in the filename
-func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table string, beforeDate time.Time) (S3File, error) {
+func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, beforeDate time.Time) (S3File, error) {
 	var retFile S3File
+
 	search := fmt.Sprintf("%s_%s", schema, table)
 	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
 	listRes, err := s3Conn.Bucket(bucket).List(search, "", "", maxKeys)
@@ -71,8 +69,14 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table string, beforeDate
 			// only want dates after or equal to the time requested - for instance the time in the db
 			// match rounded date, for instance we might be computing daily or hourly
 			if !date.Before(beforeDate) {
+
+				// set configuration location
+				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket, schema, table, date.Format(time.RFC3339))
+				if suppliedConf != "" {
+					confFile = suppliedConf
+				}
 				// hardcode json.gz
-				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, item.Key, "json.gz", ' ', date}
+				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, item.Key, "json.gz", ' ', date, confFile}
 				if err != nil {
 					return retFile, err
 				}
@@ -84,6 +88,7 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table string, beforeDate
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none after or equal to %s found with search path: 's3://%s/%s' Most recent: %s",
 		len(items), beforeDate.Format(time.RFC3339), bucket, search, items[0].Key)
+
 	return retFile, notFoundErr
 }
 
