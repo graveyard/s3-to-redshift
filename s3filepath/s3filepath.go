@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	// currently assumes no unix file created timestamp
 	s3Regex = regexp.MustCompile(".*_.*_(.*).json.*")
 )
 
@@ -31,6 +32,8 @@ type S3File struct {
 	ConfFile  string
 }
 
+// GetDataFilename returns the s3 filepath associated with an S3File
+// useful for redshift COPY commands, amongst other things
 func (f *S3File) GetDataFilename() string {
 	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket, f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
 }
@@ -47,6 +50,7 @@ func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // r
 func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, beforeDate time.Time) (S3File, error) {
 	var retFile S3File
 
+	// when we list, we want all files that look like <schema>_<table> and we look at the dates
 	search := fmt.Sprintf("%s_%s", schema, table)
 	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
 	listRes, err := s3Conn.Bucket(bucket).List(search, "", "", maxKeys)
@@ -92,7 +96,7 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf stri
 	return retFile, notFoundErr
 }
 
-// only used internally, just to parse the date in the filename
+// only used internally, just to parse the data date in the filename
 func getDateFromFileName(fileName string) (time.Time, error) {
 	var retTime time.Time
 	matches := s3Regex.FindStringSubmatch(fileName)

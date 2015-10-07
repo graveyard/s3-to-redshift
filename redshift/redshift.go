@@ -126,8 +126,9 @@ func (r *Redshift) logAndExec(cmd string) (sql.Result, error) {
 	return r.Exec(cmd)
 }
 
-// it's a little awkward to turn the moSQL format into what I want,
-// this belongs here - redshift should not have to know about s3 files really
+// GetTableFromConf returns the redshift table representation of the s3 conf file
+// It opens, unmarshalls, and does very very simple validation of the conf file
+// This belongs here - s3filepath should not have to know about redshift tables
 func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error) {
 	var tempSchema map[string]Table
 	var emptyTable Table
@@ -242,16 +243,17 @@ func getColumnSQL(c ColInfo) string {
 	}
 
 	return fmt.Sprintf("%s %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
-	//return []interface{}{c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey}
 }
 
+// RunCreateTable runs the full create table command in the provided transaction, given a
+// redshift representation of the table.
 func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error {
 	var columnSQL []string
 	for _, c := range table.Columns {
 		columnSQL = append(columnSQL, getColumnSQL(c))
 	}
 	args := []interface{}{strings.Join(columnSQL, ",")}
-	// for some reason the prepare here was wonky TODO come back and fix
+	// for some reason prepare here was unable to succeed, perhaps look at this later
 	createSQL := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, table.Meta.Schema, table.Name, strings.Join(columnSQL, ","))
 	createStmt, err := tx.Prepare(createSQL)
 	if err != nil {
@@ -263,7 +265,9 @@ func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error {
 	return err
 }
 
-// only supports adding columns currently
+// RunUpdateTable figures out what columns we need to add to the target table based on the
+// input table, and completes this action in the transaction provided
+// Note: only supports adding columns currently, not updating existing columns or removing them
 func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
 	columnOps := []string{}
 	for _, inCol := range inputTable.Columns {
@@ -318,7 +322,7 @@ func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) err
 
 // RunJSONCopy copies JSON data present in an S3 file into a redshift table.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
-// if not using jsonPaths, set to "auto"
+// if not using jsonPaths, set s3File.JsonPaths to "auto"
 func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}

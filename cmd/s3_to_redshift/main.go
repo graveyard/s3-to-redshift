@@ -65,7 +65,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable, tar
 	if truncate && !createTable {
 		log.Println("truncating table!")
 		if err = db.RunTruncate(tx, inputConf.Schema, inputTable.Name); err != nil {
-			return fmt.Errorf("err running create table: %s", err)
+			return fmt.Errorf("err running truncate table: %s", err)
 		}
 	}
 	if createTable {
@@ -133,15 +133,15 @@ func main() {
 		// VERIFICATION SECTION BEGIN
 		targetTable, lastTargetData, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
 		//spew.Dump(lastTargetData)
-		fatalIfErr(err, "err getting existing latest table metadata")
+		fatalIfErr(err, "Error getting existing latest table metadata")
 
 		// unless --force, don't update unless input data is new
 		if !inputConf.DataDate.After(lastTargetData) {
 			if *force != true {
-				log.Printf("recent data already exists in db: %s", lastTargetData)
+				log.Printf("Recent data already exists in db: %s", lastTargetData)
 				return
 			}
-			log.Println("Forcing update of inputTable: ", inputConf.Table)
+			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
 		fatalIfErr(runCopy(db, inputConf, inputTable, targetTable, *truncate), "Issue running copy")

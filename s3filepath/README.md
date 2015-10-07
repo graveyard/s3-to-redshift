@@ -40,3 +40,5 @@ filename
 ```go
 func (f *S3File) GetDataFilename() string
 ```
+GetDataFilename returns the s3 filepath associated with an S3File useful for
+redshift COPY commands, amongst other things
