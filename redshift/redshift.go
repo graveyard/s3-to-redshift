@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"sort"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	_ "github.com/lib/pq" // Postgres driver.
 
 	"github.com/Clever/redshifter/s3filepath"
-	"github.com/facebookgo/errgroup"
 )
 
 type dbExecCloser interface {
@@ -339,41 +337,6 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 	return err
 }
 
-// RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table
-// this is meant to be run in a transaction, so the first arg must be a pg.Tx
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, creds, gzip bool) error {
-	var credSQL string
-	var credArgs []interface{}
-	if creds {
-		credSQL = `CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
-		credArgs = []interface{}{f.AccessID, f.SecretKey}
-	}
-	gzipSQL := ""
-	if gzip {
-		gzipSQL = "GZIP"
-	}
-
-	cols := sortableColumns{}
-	cols = append(cols, ts.Columns...)
-	sort.Sort(cols)
-	colStrings := []string{}
-	for _, ci := range cols {
-		colStrings = append(colStrings, ci.Name)
-	}
-
-	args := []interface{}{f.Schema, f.Table, strings.Join(colStrings, ", "), f.GetDataFilename(), f.Region, gzipSQL, f.Delimiter}
-	baseCopySQL := fmt.Sprintf(`COPY "%s"."s" (%s) FROM '%s' WITH REGION '%s' %s CSV DELIMITER '%s'`, args...)
-	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
-	fullCopySQL := fmt.Sprintf("%s %s %s", baseCopySQL, opts, credSQL)
-	copyStmt, err := tx.Prepare(fmt.Sprintf(fullCopySQL, credArgs...))
-	if err != nil {
-		return err
-	}
-	log.Printf("Running command: %s", fullCopySQL)
-	_, err = copyStmt.Exec()
-	return err
-}
-
 // RunTruncate deletes all items from a table, given a transaction, a schema string and a table name
 // you shuold run vacuum and analyze soon after doing this for performance reasons
 func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
@@ -385,60 +348,9 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
 	return err
 }
 
-// RefreshTable refreshes a single table by truncating it and COPY-ing gzipped CSV data into it
-// This is done within a transaction for safety
-func (r *Redshift) refreshTable(f s3filepath.S3File, ts Table) error {
-	tx, err := r.Begin()
-	if err != nil {
-		return err
-	}
-	if err = r.RunTruncate(tx, f.Schema, f.Table); err != nil {
-		tx.Rollback()
-		return err
-	}
-	if err = r.RunCSVCopy(tx, f, ts, true, true); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit()
-}
-
-// RefreshTables refreshes multiple tables in parallel and returns an error if any of the copies
-// fail.
-func (r *Redshift) RefreshTables(
-	tables map[string]Table, awsRegion, awsAccessID, awsSecretKey, bucket, schema string, delim rune) error {
-	group := new(errgroup.Group)
-	for name, ts := range tables {
-		group.Add(1)
-
-		go func(name string, ts Table) {
-			now := time.Time{}
-			confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket, schema, name, now.Format(time.RFC3339))
-			s3File := s3filepath.S3File{awsRegion, awsAccessID, awsSecretKey, bucket, schema, name, "", "txt.gz", delim, now, confFile}
-			if err := r.refreshTable(s3File, ts); err != nil {
-				group.Error(err)
-			}
-			group.Done()
-		}(name, ts)
-	}
-	errs := new(errgroup.Group)
-	if err := group.Wait(); err != nil {
-		errs.Error(err)
-	}
-	// Use errs.Wait() to group the two errors into a single error object.
-	return errs.Wait()
-}
-
 // VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is useful for
 // recreating the indices after a database has been modified and updating the query planner.
 func (r *Redshift) VacuumAnalyze() error {
 	_, err := r.logAndExec("VACUUM FULL; ANALYZE")
-	return err
-}
-
-// VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is useful for
-// recreating the indices after a database has been modified and updating the query planner.
-func (r *Redshift) VacuumAnalyzeTable(schema, table string) error {
-	_, err := r.logAndExec(fmt.Sprintf(`VACUUM FULL "%s"."%s"; ANALYZE "%s"."%s"`, schema, table, schema, table))
 	return err
 }

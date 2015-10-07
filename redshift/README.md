@@ -72,23 +72,6 @@ GetTableMetadata looks for a table and returns both the Table representation of
 the db table and the last data in the table, if that exists if the table does
 not exist it returns an empty table but does not error
 
-#### func (*Redshift) RefreshTables
-
-```go
-func (r *Redshift) RefreshTables(
-	tables map[string]Table, awsRegion, awsAccessID, awsSecretKey, bucket, schema string, delim rune) error
-```
-RefreshTables refreshes multiple tables in parallel and returns an error if any
-of the copies fail.
-
-#### func (*Redshift) RunCSVCopy
-
-```go
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, f s3filepath.S3File, ts Table, creds, gzip bool) error
-```
-RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table this is
-meant to be run in a transaction, so the first arg must be a pg.Tx
-
 #### func (*Redshift) RunCreateTable
 
 ```go
@@ -126,15 +109,6 @@ only supports adding columns currently
 func (r *Redshift) VacuumAnalyze() error
 ```
 VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is
-useful for recreating the indices after a database has been modified and
-updating the query planner.
-
-#### func (*Redshift) VacuumAnalyzeTable
-
-```go
-func (r *Redshift) VacuumAnalyzeTable(schema, table string) error
-```
-VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is
 useful for recreating the indices after a database has been modified and
 updating the query planner.
 
