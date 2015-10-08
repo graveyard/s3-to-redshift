@@ -21,7 +21,7 @@ import (
 
 var (
 	// things we are likely to change when running the worker normally are flags
-	date            = flag.String("date", "", "what data date we process, must be full RFC3339 TODO")
+	dataDate        = flag.String("date", "", "data date we should process, must be full RFC3339")
 	truncate        = flag.Bool("truncate", false, "do we truncate the table before inserting")
 	force           = flag.Bool("force", false, "do we refresh the data even if it's already handled?")
 	inputSchemaName = flag.String("schema", "mongo", "what schema we process")
@@ -116,15 +116,18 @@ func main() {
 	// for each table passed in - likely we could goroutine this out
 	for _, t := range strings.Split(*inputTables, ",") {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
-		// find most recent s3 file
-		dataDate := time.Now().Round(time.Hour) // default to now
-		if *date != "" {
-			dataDate, err = time.Parse(time.RFC3339, *date)
-			fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *date))
+		// override most recent data file
+		var overrideDate *time.Time
+		if *dataDate != "" {
+			parsedDate, err := time.Parse(time.RFC3339, *dataDate)
+			fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
+			log.Printf("setting target date to: %s", parsedDate)
+			overrideDate = &parsedDate
 		}
+		// find most recent s3 file
 		// each input will have a configuration associated with it, output by the previous worker
 		// TODO: allow a passed-in parameter so that we don't necessarily have to write a config for each piece of data
-		inputConf, err := s3filepath.FindLatestInputData(s3Conn, *s3Prefix, *inputSchemaName, t, *configFile, dataDate.UTC())
+		inputConf, err := s3filepath.FindLatestInputData(s3Conn, *s3Prefix, *inputSchemaName, t, *configFile, overrideDate)
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
 
 		inputTable, err := db.GetTableFromConf(inputConf) // allow passing explicit config later

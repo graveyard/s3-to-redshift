@@ -46,8 +46,8 @@ func (k byTimeStampDesc) Swap(i, j int)      { k[i], k[j] = k[j], k[i] }
 func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // reversing so we get sorted by date desc
 
 // FindLatestS3FileData looks for the most recent file matching the prefix
-// created by <schema>_<table> since the date passed in, using the RFC3999 date in the filename
-func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, beforeDate time.Time) (S3File, error) {
+// created by <schema>_<table>, using the RFC3999 date in the filename
+func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error) {
 	var retFile S3File
 
 	// when we list, we want all files that look like <schema>_<table> and we look at the dates
@@ -69,11 +69,12 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf stri
 	for _, item := range items {
 		date, err := getDateFromFileName(item.Key)
 		// ignore malformed s3 files
-		if err == nil {
-			// only want dates after or equal to the time requested - for instance the time in the db
-			// match rounded date, for instance we might be computing daily or hourly
-			if !date.Before(beforeDate) {
-
+		if err != nil {
+			log.Printf("ignoring file: %s, err is: %s", item.Key, err)
+		} else {
+			if targetDate != nil && !targetDate.Equal(date) {
+				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, date)
+			} else {
 				// set configuration location
 				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket, schema, table, date.Format(time.RFC3339))
 				if suppliedConf != "" {
@@ -81,17 +82,12 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf stri
 				}
 				// hardcode json.gz
 				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, "auto", "json.gz", ' ', date, confFile}
-				if err != nil {
-					return retFile, err
-				}
 				return inputObj, nil
 			}
-		} else {
-			log.Printf("ignoring file: %s, err is: %s", item.Key, err)
 		}
 	}
-	notFoundErr := fmt.Errorf("%d files found, but none after or equal to %s found with search path: 's3://%s/%s' Most recent: %s",
-		len(items), beforeDate.Format(time.RFC3339), bucket, search, items[0].Key)
+	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
+		len(items), bucket, search, targetDate, items[0].Key)
 
 	return retFile, notFoundErr
 }

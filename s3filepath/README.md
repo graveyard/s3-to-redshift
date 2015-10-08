@@ -29,11 +29,10 @@ type S3File struct {
 #### func  FindLatestInputData
 
 ```go
-func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, beforeDate time.Time) (S3File, error)
+func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error)
 ```
 FindLatestS3FileData looks for the most recent file matching the prefix created
-by <schema>_<table> since the date passed in, using the RFC3999 date in the
-filename
+by <schema>_<table>, using the RFC3999 date in the filename
 
 #### func (*S3File) GetDataFilename
 
