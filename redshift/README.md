@@ -88,7 +88,7 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 ```
 RunJSONCopy copies JSON data present in an S3 file into a redshift table. this
 is meant to be run in a transaction, so the first arg must be a sql.Tx if not
-using jsonPaths, set s3File.JsonPaths to "auto"
+using jsonPaths, set s3File.JSONPaths to "auto"
 
 #### func (*Redshift) RunTruncate
 

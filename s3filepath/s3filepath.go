@@ -16,6 +16,7 @@ var (
 	s3Regex = regexp.MustCompile(".*_.*_(.*).json.*")
 )
 
+// S3File holds everything needed to run a COPY on the file
 type S3File struct {
 	// info needed to access
 	Region    string
@@ -25,7 +26,7 @@ type S3File struct {
 	Bucket    string // decide to keep this as string for simplicity
 	Schema    string
 	Table     string
-	JsonPaths string
+	JSONPaths string
 	Suffix    string
 	Delimiter rune
 	DataDate  time.Time
@@ -45,7 +46,7 @@ func (k byTimeStampDesc) Len() int           { return len(k) }
 func (k byTimeStampDesc) Swap(i, j int)      { k[i], k[j] = k[j], k[i] }
 func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // reversing so we get sorted by date desc
 
-// FindLatestS3FileData looks for the most recent file matching the prefix
+// FindLatestInputData looks for the most recent file matching the prefix
 // created by <schema>_<table>, using the RFC3999 date in the filename
 func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error) {
 	var retFile S3File

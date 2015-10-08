@@ -322,7 +322,7 @@ func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) err
 
 // RunJSONCopy copies JSON data present in an S3 file into a redshift table.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
-// if not using jsonPaths, set s3File.JsonPaths to "auto"
+// if not using jsonPaths, set s3File.JSONPaths to "auto"
 func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
@@ -334,7 +334,7 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JsonPaths, f.Region, credSQL)
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Region, credSQL)
 	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
 	_, err := tx.Exec(fullCopySQL)

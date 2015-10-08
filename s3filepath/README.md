@@ -17,7 +17,7 @@ type S3File struct {
 	Bucket    string // decide to keep this as string for simplicity
 	Schema    string
 	Table     string
-	JsonPaths string
+	JSONPaths string
 	Suffix    string
 	Delimiter rune
 	DataDate  time.Time
@@ -25,13 +25,14 @@ type S3File struct {
 }
 ```
 
+S3File holds everything needed to run a COPY on the file
 
 #### func  FindLatestInputData
 
 ```go
 func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error)
 ```
-FindLatestS3FileData looks for the most recent file matching the prefix created
+FindLatestInputData looks for the most recent file matching the prefix created
 by <schema>_<table>, using the RFC3999 date in the filename
 
 #### func (*S3File) GetDataFilename
