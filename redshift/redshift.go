@@ -121,11 +121,6 @@ func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift,
 	return &Redshift{sqldb}, nil
 }
 
-func (r *Redshift) logAndExec(cmd string) (sql.Result, error) {
-	log.Printf("Executing Redshift command: %s", cmd)
-	return r.Exec(cmd)
-}
-
 // GetTableFromConf returns the redshift table representation of the s3 conf file
 // It opens, unmarshalls, and does very very simple validation of the conf file
 // This belongs here - s3filepath should not have to know about redshift tables
@@ -354,6 +349,7 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
 // VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is useful for
 // recreating the indices after a database has been modified and updating the query planner.
 func (r *Redshift) VacuumAnalyze() error {
-	_, err := r.logAndExec("VACUUM FULL; ANALYZE")
+	log.Printf("Executing 'VACCUM FULL; ANALYZE'")
+	_, err := r.Exec("VACUUM FULL; ANALYZE")
 	return err
 }
