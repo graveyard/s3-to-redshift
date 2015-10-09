@@ -16,19 +16,29 @@ var (
 	s3Regex = regexp.MustCompile(".*_.*_(.*).json.*")
 )
 
-// S3File holds everything needed to run a COPY on the file
-type S3File struct {
-	// info needed to access
+// S3Bucket is our subset of the s3.Bucket class, useful for testing mostly
+type S3Bucket struct {
+	C *s3.Bucket
+	// info that makes more sense here
+	Name      string
 	Region    string
 	AccessID  string
 	SecretKey string
+}
+
+// List calls the underlying s3.Bucket List method
+func (b *S3Bucket) List(prefix, delim, marker string, max int) (result *s3.ListResp, err error) {
+	return b.C.List(prefix, delim, marker, max)
+}
+
+// S3File holds everything needed to run a COPY on the file
+type S3File struct {
 	// info on which file to get
-	Bucket    string // decide to keep this as string for simplicity
+	Bucket    *S3Bucket
 	Schema    string
 	Table     string
 	JSONPaths string
 	Suffix    string
-	Delimiter rune
 	DataDate  time.Time
 	ConfFile  string
 }
@@ -36,7 +46,7 @@ type S3File struct {
 // GetDataFilename returns the s3 filepath associated with an S3File
 // useful for redshift COPY commands, amongst other things
 func (f *S3File) GetDataFilename() string {
-	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket, f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
+	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket.Name, f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
 }
 
 // We need to sort by data timestamp to find the most recent s3 file
@@ -48,19 +58,19 @@ func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // r
 
 // FindLatestInputData looks for the most recent file matching the prefix
 // created by <schema>_<table>, using the RFC3999 date in the filename
-func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error) {
+func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error) {
 	var retFile S3File
 
 	// when we list, we want all files that look like <schema>_<table> and we look at the dates
 	search := fmt.Sprintf("%s_%s", schema, table)
 	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
-	listRes, err := s3Conn.Bucket(bucket).List(search, "", "", maxKeys)
+	listRes, err := bucket.List(search, "", "", maxKeys)
 	if err != nil {
 		return retFile, err
 	}
 	items := listRes.Contents
 	if len(items) == 0 {
-		return retFile, fmt.Errorf("no files found with search path: s3://%s/%s", bucket, search)
+		return retFile, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name, search)
 	}
 	if len(items) >= maxKeys {
 		return retFile, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
@@ -77,18 +87,18 @@ func FindLatestInputData(s3Conn *s3.S3, bucket, schema, table, suppliedConf stri
 				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, date)
 			} else {
 				// set configuration location
-				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket, schema, table, date.Format(time.RFC3339))
+				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket.Name, schema, table, date.Format(time.RFC3339))
 				if suppliedConf != "" {
 					confFile = suppliedConf
 				}
 				// hardcode json.gz
-				inputObj := S3File{s3Conn.Region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey, bucket, schema, table, "auto", "json.gz", ' ', date, confFile}
+				inputObj := S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
 				return inputObj, nil
 			}
 		}
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
-		len(items), bucket, search, targetDate, items[0].Key)
+		len(items), bucket.Name, search, targetDate, items[0].Key)
 
 	return retFile, notFoundErr
 }

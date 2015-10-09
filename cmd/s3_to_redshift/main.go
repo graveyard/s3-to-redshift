@@ -102,6 +102,8 @@ func main() {
 	awsAuth, err := aws.EnvAuth()
 	fatalIfErr(err, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables must be set.")
 	s3Conn := s3.New(awsAuth, region)
+	// use an custom bucket type for testablitity
+	bucket := s3filepath.S3Bucket{s3Conn.Bucket(*s3Prefix), *s3Prefix, region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey}
 
 	//timeout := 10 // can parameterize later if this is an issue
 	if host == "" {
@@ -127,7 +129,7 @@ func main() {
 		// find most recent s3 file
 		// each input will have a configuration associated with it, output by the previous worker
 		// TODO: allow a passed-in parameter so that we don't necessarily have to write a config for each piece of data
-		inputConf, err := s3filepath.FindLatestInputData(s3Conn, *s3Prefix, *inputSchemaName, t, *configFile, overrideDate)
+		inputConf, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, *configFile, overrideDate)
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
 
 		inputTable, err := db.GetTableFromConf(inputConf) // allow passing explicit config later
