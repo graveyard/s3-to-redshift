@@ -344,11 +344,11 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 // RunTruncate deletes all items from a table, given a transaction, a schema string and a table name
 // you shuold run vacuum and analyze soon after doing this for performance reasons
 func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
-	truncStmt, err := tx.Prepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
+	truncStmt, err := tx.Prepare(`DELETE FROM "?"."?"`)
 	if err != nil {
 		return err
 	}
-	_, err = truncStmt.Exec()
+	_, err = truncStmt.Exec(schema, table)
 	return err
 }
 
