@@ -236,7 +236,7 @@ func getColumnSQL(c ColInfo) string {
 		distKey = "DISTKEY"
 	}
 
-	return fmt.Sprintf("%s %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
+	return fmt.Sprintf(" %s %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
 }
 
 // RunCreateTable runs the full create table command in the provided transaction, given a
@@ -307,10 +307,16 @@ func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) err
 		return nil
 	}
 
-	alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" %s`, targetTable.Meta.Schema, targetTable.Name, strings.Join(columnOps, ","))
+	alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" %s`,
+		targetTable.Meta.Schema, targetTable.Name, strings.Join(columnOps, ","))
+
+	alterStmt, err := tx.Prepare(alterSQL)
+	if err != nil {
+		return fmt.Errorf("issue preparing statement: %s", err)
+	}
 
 	log.Printf("Running command: %s", alterSQL)
-	_, err := tx.Exec(alterSQL)
+	_, err = alterStmt.Exec()
 	return err
 }
 
