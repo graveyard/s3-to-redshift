@@ -88,7 +88,7 @@ S3File holds everything needed to run a COPY on the file
 #### func  FindLatestInputData
 
 ```go
-func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error)
+func FindLatestInputData(bucket Bucketer, schema, table, suppliedConf string, targetDate *time.Time) (*S3File, error)
 ```
 FindLatestInputData looks for the most recent file matching the prefix created
 by <schema>_<table>, using the RFC3999 date in the filename

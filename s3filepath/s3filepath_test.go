@@ -16,6 +16,7 @@ type MockBucket struct {
 	BucketRegion    string
 	BucketAccessID  string
 	BucketSecretKey string
+	results         *s3.ListResp
 }
 
 func (b *MockBucket) Name() string      { return b.BucketName }
@@ -24,13 +25,14 @@ func (b *MockBucket) AccessID() string  { return b.BucketAccessID }
 func (b *MockBucket) SecretKey() string { return b.BucketSecretKey }
 func (b *MockBucket) List(prefix, delim, marker string, max int) (result *s3.ListResp, err error) {
 	log.Println("in mock bucket")
-	return nil, nil
+	return b.results, nil
 }
 
-func getTestFileWithBucket(b Bucketer) S3File {
+func getTestFileWithResults(res *s3.ListResp) S3File {
+	mockBucket := MockBucket{s3.Bucket{}, "bucket", "testregion", "accesskey", "secretkey", res}
 	expectedDate := time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC)
 	s3File := S3File{
-		Bucket:    b,
+		Bucket:    &mockBucket,
 		Schema:    "testschema",
 		Table:     "tablename",
 		JSONPaths: "",
@@ -42,10 +44,14 @@ func getTestFileWithBucket(b Bucketer) S3File {
 }
 
 func TestFindLatestInputData(t *testing.T) {
-	mockBucket := MockBucket{s3.Bucket{}, "bucket", "testregion", "accesskey", "secretkey"}
 	// test no files found
-	s3File := getTestFileWithBucket(&mockBucket)
-	log.Println("s3 expected: %s", s3File)
+	res := s3.ListResp{}
+	res.Contents = []s3.Key{}
+	expFile := getTestFileWithResults(&res)
+	returnedFile, err := FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "", &expFile.DataDate)
+	assert.Nil(t, returnedFile)
+	assert.Error(t, err)
+
 	// test too many files found?
 
 	// test set date

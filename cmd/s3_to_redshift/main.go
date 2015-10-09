@@ -132,7 +132,7 @@ func main() {
 		inputConf, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, *configFile, overrideDate)
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
 
-		inputTable, err := db.GetTableFromConf(inputConf) // allow passing explicit config later
+		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")
 
 		// VERIFICATION SECTION BEGIN
@@ -149,7 +149,7 @@ func main() {
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, inputConf, inputTable, targetTable, *truncate), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, inputTable, targetTable, *truncate), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}

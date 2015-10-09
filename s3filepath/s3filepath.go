@@ -79,22 +79,21 @@ func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // r
 
 // FindLatestInputData looks for the most recent file matching the prefix
 // created by <schema>_<table>, using the RFC3999 date in the filename
-func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, targetDate *time.Time) (S3File, error) {
-	var retFile S3File
+func FindLatestInputData(bucket Bucketer, schema, table, suppliedConf string, targetDate *time.Time) (*S3File, error) {
 
 	// when we list, we want all files that look like <schema>_<table> and we look at the dates
 	search := fmt.Sprintf("%s_%s", schema, table)
 	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
 	listRes, err := bucket.List(search, "", "", maxKeys)
 	if err != nil {
-		return retFile, err
+		return nil, err
 	}
 	items := listRes.Contents
 	if len(items) == 0 {
-		return retFile, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
+		return nil, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
 	}
 	if len(items) >= maxKeys {
-		return retFile, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
+		return nil, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
 	}
 	sort.Sort(byTimeStampDesc(items)) // sort by ts desc
 
@@ -114,14 +113,14 @@ func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, t
 				}
 				// hardcode json.gz
 				inputObj := S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
-				return inputObj, nil
+				return &inputObj, nil
 			}
 		}
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
 		len(items), bucket.Name(), search, targetDate, items[0].Key)
 
-	return retFile, notFoundErr
+	return nil, notFoundErr
 }
 
 // only used internally, just to parse the data date in the filename
