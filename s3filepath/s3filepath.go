@@ -28,7 +28,7 @@ type Bucketer interface {
 
 // S3Bucket is our subset of the s3.Bucket class, useful for testing mostly
 type S3Bucket struct {
-	s3.Bucket
+	C s3.Bucket
 	// info that makes more sense here
 	BucketName      string
 	BucketRegion    string
@@ -52,7 +52,7 @@ func (b *S3Bucket) SecretKey() string { return b.BucketSecretKey }
 
 // List calls the underlying s3.Bucket List method
 func (b *S3Bucket) List(prefix, delim, marker string, max int) (result *s3.ListResp, err error) {
-	return b.List(prefix, delim, marker, max)
+	return b.C.List(prefix, delim, marker, max)
 }
 
 // S3File holds everything needed to run a COPY on the file

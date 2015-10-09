@@ -24,7 +24,7 @@ the goamz library
 
 ```go
 type S3Bucket struct {
-	s3.Bucket
+	C s3.Bucket
 	// info that makes more sense here
 	BucketName      string
 	BucketRegion    string
