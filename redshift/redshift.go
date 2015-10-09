@@ -337,6 +337,7 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region(), credSQL)
 	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
+	// can't use prepare b/c of redshift-specific syntax that postgres does not like
 	_, err := tx.Exec(fullCopySQL)
 	return err
 }
