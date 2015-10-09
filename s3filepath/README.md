@@ -17,6 +17,8 @@ type Bucketer interface {
 }
 ```
 
+Bucketer interface is useful for testing and showing that we only use List from
+the goamz library
 
 #### type S3Bucket
 
@@ -52,7 +54,7 @@ List calls the underlying s3.Bucket List method
 ```go
 func (b *S3Bucket) Name() string
 ```
-All of these simple accessors are for testing Name returns the name
+Name returns the name
 
 #### func (*S3Bucket) Region
 

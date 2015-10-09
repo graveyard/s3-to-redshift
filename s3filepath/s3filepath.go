@@ -13,9 +13,11 @@ import (
 
 var (
 	// currently assumes no unix file created timestamp
-	s3Regex = regexp.MustCompile(".*_.*_(.*).json.*")
+	s3Regex = regexp.MustCompile(".*_.*_(.*).json.gz")
 )
 
+// Bucketer interface is useful for testing and showing that
+// we only use List from the goamz library
 type Bucketer interface {
 	List(prefix, delim, marker string, max int) (result *s3.ListResp, err error)
 	Name() string
@@ -34,7 +36,8 @@ type S3Bucket struct {
 	BucketSecretKey string
 }
 
-// All of these simple accessors are for testing
+// All of these simple accessors are to adjust to Bucketer for testing
+
 // Name returns the name
 func (b *S3Bucket) Name() string { return b.BucketName }
 
