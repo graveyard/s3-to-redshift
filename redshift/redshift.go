@@ -164,9 +164,7 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error) {
 // GetTableMetadata looks for a table and returns both the Table representation
 // of the db table and the last data in the table, if that exists
 // if the table does not exist it returns an empty table but does not error
-func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Table, time.Time, error) {
-	var retTable Table
-	var lastData time.Time
+func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Table, *time.Time, error) {
 	var cols []ColInfo
 
 	// does the table exist?
@@ -174,15 +172,15 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Tabl
 	q := fmt.Sprintf(existQueryFormat, schema, tableName)
 	if err := r.QueryRow(q).Scan(&placeholder); err != nil {
 		if err == sql.ErrNoRows {
-			return retTable, lastData, nil
+			return nil, nil, nil
 		}
-		return retTable, lastData, fmt.Errorf("issue just checking if the table exists: %s", err)
+		return nil, nil, fmt.Errorf("issue just checking if the table exists: %s", err)
 	}
 
 	// table exists, what are the columns?
 	rows, err := r.Query(fmt.Sprintf(schemaQueryFormat, schema, tableName))
 	if err != nil {
-		return retTable, lastData, fmt.Errorf("issue running column query: %s, err: %s", schemaQueryFormat, err)
+		return nil, nil, fmt.Errorf("issue running column query: %s, err: %s", schemaQueryFormat, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -190,17 +188,17 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Tabl
 		if err := rows.Scan(&c.Ordinal, &c.Name, &c.Type, &c.DefaultVal, &c.NotNull,
 			&c.PrimaryKey, &c.DistKey, &c.SortOrdinal,
 		); err != nil {
-			return retTable, lastData, fmt.Errorf("issue scanning column, err: %s", err)
+			return nil, nil, fmt.Errorf("issue scanning column, err: %s", err)
 		}
 
 		cols = append(cols, c)
 	}
 	if err := rows.Err(); err != nil {
-		return retTable, lastData, fmt.Errorf("issue iterating over columns, err: %s", err)
+		return nil, nil, fmt.Errorf("issue iterating over columns, err: %s", err)
 	}
 
 	// turn into Table struct
-	retTable = Table{
+	retTable := Table{
 		Name:    tableName,
 		Columns: cols,
 		Meta: Meta{
@@ -212,10 +210,11 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Tabl
 	// what's the last data in the table?
 	lastDataQuery := fmt.Sprintf("SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1",
 		dataDateCol, schema, tableName, dataDateCol)
+	var lastData time.Time
 	if err = r.QueryRow(lastDataQuery).Scan(&lastData); err != nil {
-		return retTable, lastData, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
+		return nil, nil, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
 	}
-	return retTable, lastData, nil
+	return &retTable, &lastData, nil
 }
 
 func getColumnSQL(c ColInfo) string {

@@ -67,7 +67,7 @@ This belongs here - s3filepath should not have to know about redshift tables
 #### func (*Redshift) GetTableMetadata
 
 ```go
-func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (Table, time.Time, error)
+func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Table, *time.Time, error)
 ```
 GetTableMetadata looks for a table and returns both the Table representation of
 the db table and the last data in the table, if that exists if the table does

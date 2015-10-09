@@ -137,19 +137,18 @@ func main() {
 
 		// VERIFICATION SECTION BEGIN
 		targetTable, lastTargetData, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
-		//spew.Dump(lastTargetData)
 		fatalIfErr(err, "Error getting existing latest table metadata")
 
 		// unless --force, don't update unless input data is new
-		if !inputConf.DataDate.After(lastTargetData) {
+		if !inputConf.DataDate.After(*lastTargetData) {
 			if *force != true {
-				log.Printf("Recent data already exists in db: %s", lastTargetData)
+				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return
 			}
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, *inputConf, inputTable, targetTable, *truncate), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, inputTable, *targetTable, *truncate), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}
