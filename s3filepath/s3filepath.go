@@ -16,25 +16,46 @@ var (
 	s3Regex = regexp.MustCompile(".*_.*_(.*).json.*")
 )
 
+type Bucketer interface {
+	List(prefix, delim, marker string, max int) (result *s3.ListResp, err error)
+	Name() string
+	Region() string
+	AccessID() string
+	SecretKey() string
+}
+
 // S3Bucket is our subset of the s3.Bucket class, useful for testing mostly
 type S3Bucket struct {
-	C *s3.Bucket
+	s3.Bucket
 	// info that makes more sense here
-	Name      string
-	Region    string
-	AccessID  string
-	SecretKey string
+	BucketName      string
+	BucketRegion    string
+	BucketAccessID  string
+	BucketSecretKey string
 }
+
+// All of these simple accessors are for testing
+// Name returns the name
+func (b *S3Bucket) Name() string { return b.BucketName }
+
+// Region returns the name
+func (b *S3Bucket) Region() string { return b.BucketRegion }
+
+// AccessID returns the name
+func (b *S3Bucket) AccessID() string { return b.BucketAccessID }
+
+// SecretKey returns the name
+func (b *S3Bucket) SecretKey() string { return b.BucketSecretKey }
 
 // List calls the underlying s3.Bucket List method
 func (b *S3Bucket) List(prefix, delim, marker string, max int) (result *s3.ListResp, err error) {
-	return b.C.List(prefix, delim, marker, max)
+	return b.List(prefix, delim, marker, max)
 }
 
 // S3File holds everything needed to run a COPY on the file
 type S3File struct {
 	// info on which file to get
-	Bucket    *S3Bucket
+	Bucket    Bucketer
 	Schema    string
 	Table     string
 	JSONPaths string
@@ -46,7 +67,7 @@ type S3File struct {
 // GetDataFilename returns the s3 filepath associated with an S3File
 // useful for redshift COPY commands, amongst other things
 func (f *S3File) GetDataFilename() string {
-	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket.Name, f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
+	return fmt.Sprintf("s3://%s/%s_%s_%s.%s", f.Bucket.Name(), f.Schema, f.Table, f.DataDate.Format(time.RFC3339), f.Suffix)
 }
 
 // We need to sort by data timestamp to find the most recent s3 file
@@ -70,7 +91,7 @@ func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, t
 	}
 	items := listRes.Contents
 	if len(items) == 0 {
-		return retFile, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name, search)
+		return retFile, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
 	}
 	if len(items) >= maxKeys {
 		return retFile, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
@@ -87,7 +108,7 @@ func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, t
 				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, date)
 			} else {
 				// set configuration location
-				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket.Name, schema, table, date.Format(time.RFC3339))
+				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket.Name(), schema, table, date.Format(time.RFC3339))
 				if suppliedConf != "" {
 					confFile = suppliedConf
 				}
@@ -98,7 +119,7 @@ func FindLatestInputData(bucket *S3Bucket, schema, table, suppliedConf string, t
 		}
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
-		len(items), bucket.Name, search, targetDate, items[0].Key)
+		len(items), bucket.Name(), search, targetDate, items[0].Key)
 
 	return retFile, notFoundErr
 }

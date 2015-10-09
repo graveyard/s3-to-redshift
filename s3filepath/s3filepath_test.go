@@ -9,23 +9,43 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type MockBucket struct{}
-
-func (b *MockBucket) List(prefix, delim, marker string, max int) (result *s3.ListResp, err error) {
-	log.Println("in mock bucket")
+type MockBucket struct {
+	s3.Bucket
+	// info that makes more sense here
+	BucketName      string
+	BucketRegion    string
+	BucketAccessID  string
+	BucketSecretKey string
 }
 
-func TestFindLatestInputData(t *testing.T) {
-	mockBucket := MockBucket{&s3.Bucket{}, "bucket", "testregion", "accesskey", "secretkey"}
-	s3Info := S3File{
-		Bucket:    &MockBucket{},
+func (b *MockBucket) Name() string      { return b.BucketName }
+func (b *MockBucket) Region() string    { return b.BucketRegion }
+func (b *MockBucket) AccessID() string  { return b.BucketAccessID }
+func (b *MockBucket) SecretKey() string { return b.BucketSecretKey }
+func (b *MockBucket) List(prefix, delim, marker string, max int) (result *s3.ListResp, err error) {
+	log.Println("in mock bucket")
+	return nil, nil
+}
+
+func getTestFileWithBucket(b Bucketer) S3File {
+	expectedDate := time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC)
+	s3File := S3File{
+		Bucket:    b,
 		Schema:    "testschema",
 		Table:     "tablename",
 		JSONPaths: "",
+		Suffix:    "foo",
+		DataDate:  expectedDate,
+		ConfFile:  "foo.yml",
 	}
-	log.Println("s3 expected: %s", s3Info)
-	// test no files found
+	return s3File
+}
 
+func TestFindLatestInputData(t *testing.T) {
+	mockBucket := MockBucket{s3.Bucket{}, "bucket", "testregion", "accesskey", "secretkey"}
+	// test no files found
+	s3File := getTestFileWithBucket(&mockBucket)
+	log.Println("s3 expected: %s", s3File)
 	// test too many files found?
 
 	// test set date

@@ -103,7 +103,7 @@ func main() {
 	fatalIfErr(err, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables must be set.")
 	s3Conn := s3.New(awsAuth, region)
 	// use an custom bucket type for testablitity
-	bucket := s3filepath.S3Bucket{s3Conn.Bucket(*s3Prefix), *s3Prefix, region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey}
+	bucket := s3filepath.S3Bucket{*s3Conn.Bucket(*s3Prefix), *s3Prefix, region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey}
 
 	//timeout := 10 // can parameterize later if this is an issue
 	if host == "" {

@@ -5,20 +5,40 @@
 
 ## Usage
 
+#### type Bucketer
+
+```go
+type Bucketer interface {
+	List(prefix, delim, marker string, max int) (result *s3.ListResp, err error)
+	Name() string
+	Region() string
+	AccessID() string
+	SecretKey() string
+}
+```
+
+
 #### type S3Bucket
 
 ```go
 type S3Bucket struct {
-	C *s3.Bucket
+	s3.Bucket
 	// info that makes more sense here
-	Name      string
-	Region    string
-	AccessID  string
-	SecretKey string
+	BucketName      string
+	BucketRegion    string
+	BucketAccessID  string
+	BucketSecretKey string
 }
 ```
 
 S3Bucket is our subset of the s3.Bucket class, useful for testing mostly
+
+#### func (*S3Bucket) AccessID
+
+```go
+func (b *S3Bucket) AccessID() string
+```
+AccessID returns the name
 
 #### func (*S3Bucket) List
 
@@ -27,12 +47,33 @@ func (b *S3Bucket) List(prefix, delim, marker string, max int) (result *s3.ListR
 ```
 List calls the underlying s3.Bucket List method
 
+#### func (*S3Bucket) Name
+
+```go
+func (b *S3Bucket) Name() string
+```
+All of these simple accessors are for testing Name returns the name
+
+#### func (*S3Bucket) Region
+
+```go
+func (b *S3Bucket) Region() string
+```
+Region returns the name
+
+#### func (*S3Bucket) SecretKey
+
+```go
+func (b *S3Bucket) SecretKey() string
+```
+SecretKey returns the name
+
 #### type S3File
 
 ```go
 type S3File struct {
 	// info on which file to get
-	Bucket    *S3Bucket
+	Bucket    Bucketer
 	Schema    string
 	Table     string
 	JSONPaths string

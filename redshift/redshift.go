@@ -328,13 +328,13 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 	var credArgs []interface{}
 	if creds {
 		credSQL = `CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
-		credArgs = []interface{}{f.Bucket.AccessID, f.Bucket.SecretKey}
+		credArgs = []interface{}{f.Bucket.AccessID(), f.Bucket.SecretKey()}
 	}
 	gzipSQL := ""
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region, credSQL)
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region(), credSQL)
 	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
 	_, err := tx.Exec(fullCopySQL)
