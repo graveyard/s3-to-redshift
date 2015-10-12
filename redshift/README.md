@@ -34,9 +34,7 @@ type Meta struct {
 
 Meta holds information that might be not in Redshift or annoying to access in
 this case, we want to know the schema a table is part of and the column which
-corresponds to the timestamp at which the data was gathered NOTE: this will be
-useful for the s3-to-redshift worker, but is currently not very useful same with
-the yaml info
+corresponds to the timestamp at which the data was gathered
 
 #### type Redshift
 
@@ -57,6 +55,32 @@ NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
 
+#### func (*Redshift) GetTableFromConf
+
+```go
+func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error)
+```
+GetTableFromConf returns the redshift table representation of the s3 conf file
+It opens, unmarshalls, and does very very simple validation of the conf file
+This belongs here - s3filepath should not have to know about redshift tables
+
+#### func (*Redshift) GetTableMetadata
+
+```go
+func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Table, *time.Time, error)
+```
+GetTableMetadata looks for a table and returns both the Table representation of
+the db table and the last data in the table, if that exists if the table does
+not exist it returns an empty table but does not error
+
+#### func (*Redshift) RunCreateTable
+
+```go
+func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error
+```
+RunCreateTable runs the full create table command in the provided transaction,
+given a redshift representation of the table.
+
 #### func (*Redshift) RunJSONCopy
 
 ```go
@@ -74,6 +98,16 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error
 RunTruncate deletes all items from a table, given a transaction, a schema string
 and a table name you shuold run vacuum and analyze soon after doing this for
 performance reasons
+
+#### func (*Redshift) RunUpdateTable
+
+```go
+func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) error
+```
+RunUpdateTable figures out what columns we need to add to the target table based
+on the input table, and completes this action in the transaction provided Note:
+only supports adding columns currently, not updating existing columns or
+removing them
 
 #### func (*Redshift) VacuumAnalyze
 
@@ -94,5 +128,4 @@ type Table struct {
 }
 ```
 
-Table is our representation of a Redshift table the main difference is an added
-metadata section and YAML unmarshalling guidance
+Table is our representation of a Redshift table
