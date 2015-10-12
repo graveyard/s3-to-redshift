@@ -2,9 +2,14 @@ package redshift
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/mitchellh/goamz/s3"
 
@@ -12,6 +17,90 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 )
+
+// helper for TestTableFromConf - marshals the table into a file
+func getTempConfFromTable(name string, table Table) (string, error) {
+	toMarshal := map[string]Table{name: table}
+	file, err := ioutil.TempFile(os.TempDir(), "testconf")
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	d, err := yaml.Marshal(&toMarshal)
+	if err != nil {
+		return "", err
+	}
+	_, err = file.Write(d)
+	if err != nil {
+		return "", err
+	}
+	return file.Name(), nil
+}
+
+func TestTableFromConf(t *testing.T) {
+	db := Redshift{nil}
+
+	schema, table := "testschema", "testtable"
+	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	b := s3filepath.S3Bucket{s3.Bucket{}, bucket, region, accessID, secretKey}
+
+	matchingTable := Table{
+		Name:    table,
+		Columns: []ColInfo{},
+		Meta: Meta{
+			Schema:         schema,
+			DataDateColumn: "foo",
+		},
+	}
+
+	f := s3filepath.S3File{
+		Bucket:    &b,
+		Schema:    schema,
+		Table:     table,
+		JSONPaths: "auto",
+		Suffix:    "json.gz",
+		DataDate:  time.Now(),
+	}
+
+	// valid
+	fileName, err := getTempConfFromTable(table, matchingTable)
+	assert.NoError(t, err)
+	f.ConfFile = fileName
+	returnedTable, err := db.GetTableFromConf(f)
+	assert.NoError(t, err)
+	assert.Equal(t, matchingTable, *returnedTable)
+
+	// one which doesn't have the target table
+	fileName, err = getTempConfFromTable("notthetable", matchingTable)
+	assert.NoError(t, err)
+	f.ConfFile = fileName
+	returnedTable, err = db.GetTableFromConf(f)
+	if assert.Error(t, err) {
+		assert.Equal(t, true, strings.Contains(err.Error(), "can't find table in conf"))
+	}
+
+	// one which has a mismatched schema
+	badSchema := matchingTable
+	badSchema.Meta.Schema = "notthesameschema"
+	fileName, err = getTempConfFromTable(table, badSchema)
+	assert.NoError(t, err)
+	f.ConfFile = fileName
+	returnedTable, err = db.GetTableFromConf(f)
+	if assert.Error(t, err) {
+		assert.Equal(t, true, strings.Contains(err.Error(), "mismatched schema"))
+	}
+
+	// one without a data date column
+	noDataDateCol := matchingTable
+	noDataDateCol.Meta.DataDateColumn = ""
+	fileName, err = getTempConfFromTable(table, noDataDateCol)
+	assert.NoError(t, err)
+	f.ConfFile = fileName
+	returnedTable, err = db.GetTableFromConf(f)
+	if assert.Error(t, err) {
+		assert.Equal(t, true, strings.Contains(err.Error(), "Data Date Column must be set"))
+	}
+}
 
 // test create and getColumnSQL at the same time
 // getColumnSQL is too simple to be worth testing independently
