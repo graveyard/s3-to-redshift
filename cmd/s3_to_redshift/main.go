@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -137,7 +138,9 @@ func main() {
 
 		// VERIFICATION SECTION BEGIN
 		targetTable, lastTargetData, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
-		fatalIfErr(err, "Error getting existing latest table metadata")
+		if err != nil && err != sql.ErrNoRows { // ErrNoRows is fine, just means the table doesn't exist
+			fatalIfErr(err, "Error getting existing latest table metadata") // use fatalIfErr to stay the same
+		}
 
 		// unless --force, don't update unless input data is new
 		if !inputConf.DataDate.After(*lastTargetData) {

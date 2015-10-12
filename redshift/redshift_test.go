@@ -1,6 +1,7 @@
 package redshift
 
 import (
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -99,6 +100,100 @@ func TestTableFromConf(t *testing.T) {
 	returnedTable, err = db.GetTableFromConf(f)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "Data Date Column must be set"))
+	}
+}
+
+// I'm not going to worry about if the db throws an error
+// however, this is a good candidate for an integration test to make sure that
+// the SQL to find the columns works
+func TestGetTableMetadata(t *testing.T) {
+	schema, table, dataDateCol := "testschema", "testtable", "testdatadatecol"
+
+	expectedDate := time.Now()
+	expectedTable := Table{
+		Name: table,
+		Columns: []ColInfo{{
+			Ordinal:     1,
+			Name:        "foo",
+			Type:        "int",
+			DefaultVal:  "5",
+			NotNull:     false,
+			PrimaryKey:  false,
+			DistKey:     false,
+			SortOrdinal: 0,
+		}},
+		Meta: Meta{
+			Schema:         schema,
+			DataDateColumn: dataDateCol,
+		},
+	}
+	//colVals := []interface{}{1, "foo", "int", 5, false, false, false, 0}
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db}
+
+	// test normal operation
+	//   - test existence of table
+	//   - gets a bunch of rows
+	//   - requests time info from the table
+	//   - returns a table
+	mock.ExpectBegin()
+
+	// test table existence
+	existRegex := fmt.Sprintf(`SELECT table_name FROM information_schema.tables WHERE table_schema='%s' AND table_name='%s'`, schema, table)
+	existRows := sqlmock.NewRows([]string{"table_name"})
+	existRows.AddRow(table)
+	mock.ExpectQuery(existRegex).WithArgs().WillReturnRows(existRows)
+	// column info
+	// don't look for the whole query, just the important bits
+	colInfoRegex := fmt.Sprintf(`SELECT f.attnum .*nspname = '%s' .*relname = '%s'.*`, schema, table)
+	colInfoRows := sqlmock.NewRows([]string{"ordinal", "name", "col_type", "default_val",
+		"not_null", "primary_key", "dist_key", "sort_ord"})
+	// matches expectedTable above, used for returning from sql mock
+	colInfoRows.AddRow(1, "foo", "int", 5, false, false, false, 0)
+	mock.ExpectQuery(colInfoRegex).WithArgs().WillReturnRows(colInfoRows)
+	// last data
+	dateRegex := fmt.Sprintf(`SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1`, dataDateCol, schema, table, dataDateCol)
+	dateRows := sqlmock.NewRows([]string{"date"})
+	dateRows.AddRow(expectedDate)
+	mock.ExpectQuery(dateRegex).WithArgs().WillReturnRows(dateRows)
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	returnedTable, returnedDate, err := mockrs.GetTableMetadata(schema, table, dataDateCol)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedTable, *returnedTable)
+	assert.Equal(t, expectedDate, *returnedDate)
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+
+	// test table does not exist
+	// should only run the first check
+	// we don't return it as an errorin this case
+	mock.ExpectBegin()
+	existRegex = fmt.Sprintf(`SELECT table_name FROM information_schema.tables WHERE table_schema='%s' AND table_name='%s'`, schema, table)
+	existRows = sqlmock.NewRows([]string{"table_name"})
+	existRows.AddRow(table)
+	mock.ExpectQuery(existRegex).WithArgs().WillReturnError(sql.ErrNoRows)
+	mock.ExpectCommit()
+
+	tx, err = mockrs.Begin()
+	assert.NoError(t, err)
+	returnedTable, returnedDate, err = mockrs.GetTableMetadata(schema, table, dataDateCol)
+	assert.Error(t, err)
+	assert.Equal(t, sql.ErrNoRows, err)
+	assert.Nil(t, returnedTable)
+	assert.Nil(t, returnedDate)
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
 	}
 }
 

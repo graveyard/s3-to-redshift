@@ -166,7 +166,8 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Tab
 	q := fmt.Sprintf(existQueryFormat, schema, tableName)
 	if err := r.QueryRow(q).Scan(&placeholder); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil, nil
+			log.Printf("schema: %s, table: %s does not exist", schema, tableName)
+			return nil, nil, sql.ErrNoRows
 		}
 		return nil, nil, fmt.Errorf("issue just checking if the table exists: %s", err)
 	}
