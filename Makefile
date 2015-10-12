@@ -11,9 +11,6 @@ build: test
 
 test: docs $(PKGS)
 
-$(GOPATH)/bin/godep:
-	@go get github.com/tools/godep
-
 $(GOPATH)/bin/golint:
 	@go get github.com/golang/lint/golint
 
@@ -28,14 +25,9 @@ ifneq ($(NOLINT),1)
 	@$(GOPATH)/bin/golint $(GOPATH)/src/$@*/**.go
 	@echo ""
 endif
-ifeq ($(COVERAGE),1)
-	@$(GOPATH)/bin/godep go test -cover -coverprofile=$(GOPATH)/src/$@/c.out $@ -test.v
-	@$(GOPATH)/bin/godep go tool cover -html=$(GOPATH)/src/$@/c.out
-else
 	@echo "TESTING..."
-	@$(GOPATH)/bin/godep go test $@ -test.v
+	@go test $@ -test.v
 	@echo ""
-endif
 
 docs: $(addsuffix /README.md, $(SUBPKG_NAMES)) README.md
 %/README.md: %/*.go $(GOPATH)/bin/godocdown
