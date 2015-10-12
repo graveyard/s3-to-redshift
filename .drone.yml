@@ -1,17 +1,19 @@
-image: bradrydzewski/go:1.3
+image: go1.4
 notify:
   email:
     recipients:
     - drone@clever.com
-  slack:
-    on_failure: true
-    on_started: false
-    on_success: false
-    webhook_url: $$slack_webhook
+publish:
+  docker:
+    docker_host: $$docker_server
+    email: $$docker_email
+    image_name: clever/s3-to-redshift
+    password: $$docker_password
+    registry_login: true
+    tags:
+    - $(git rev-parse --short HEAD)
+    username: $$docker_username
+    when:
+      branch: master
 script:
-- go get github.com/tools/godep
-- mkdir -p $GOPATH/src/github.com/Clever
-- ln -s `pwd` $GOPATH/src/github.com/Clever/redshifter
-- export AWS_ACCESS_KEY_ID=x
-- export AWS_SECRET_ACCESS_KEY=x
-- make test
+  - make build

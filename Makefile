@@ -4,7 +4,10 @@ SUBPKG_NAMES := redshift s3filepath
 SUBPKGS = $(addprefix $(PKG)/, $(SUBPKG_NAMES))
 PKGS = $(PKG)/cmd/ $(SUBPKGS)
 
-.PHONY: test golint docs
+.PHONY: build test golint docs $(PKG) $(PKGS)
+
+build: test
+	go build -o build/s3-to-redshift github.com/Clever/redshifter/cmd
 
 test: docs $(PKGS)
 
