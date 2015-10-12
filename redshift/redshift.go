@@ -18,17 +18,9 @@ type dbExecCloser interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }
 
-// S3Info holds the information necessary to copy data from s3 buckets
-type S3Info struct {
-	Region    string
-	AccessID  string
-	SecretKey string
-}
-
 // Redshift wraps a dbExecCloser and can be used to perform operations on a redshift database.
 type Redshift struct {
 	dbExecCloser
-	s3Info S3Info
 }
 
 // Table is our representation of a Redshift table
@@ -69,13 +61,12 @@ func (c sortableColumns) Len() int           { return len(c) }
 func (c sortableColumns) Less(i, j int) bool { return c[i].Ordinal < c[j].Ordinal }
 func (c sortableColumns) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
-var (
-)
+var ()
 
 // NewRedshift returns a pointer to a new redshift object using configuration values passed in
 // on instantiation and the AWS env vars we assume exist
 // Don't need to pass s3 info unless doing a COPY operation
-func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3Info) (*Redshift, error) {
+func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error) {
 	flag.Parse()
 	source := fmt.Sprintf("host=%s port=%d dbname=%s connect_timeout=%d", host, port, db, timeout)
 	log.Println("Connecting to Redshift Source: ", source)
@@ -84,7 +75,7 @@ func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3In
 	if err != nil {
 		return nil, err
 	}
-	return &Redshift{sqldb, s3Info}, nil
+	return &Redshift{sqldb}, nil
 }
 
 func (r *Redshift) logAndExec(cmd string) (sql.Result, error) {

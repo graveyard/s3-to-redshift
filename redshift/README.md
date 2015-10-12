@@ -51,7 +51,7 @@ redshift database.
 #### func  NewRedshift
 
 ```go
-func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3Info) (*Redshift, error)
+func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error)
 ```
 NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
@@ -83,18 +83,6 @@ func (r *Redshift) VacuumAnalyze() error
 VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is
 useful for recreating the indices after a database has been modified and
 updating the query planner.
-
-#### type S3Info
-
-```go
-type S3Info struct {
-	Region    string
-	AccessID  string
-	SecretKey string
-}
-```
-
-S3Info holds the information necessary to copy data from s3 buckets
 
 #### type Table
 
