@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 
+	_ "github.com/lib/pq" // Postgres driver.
+
+	"github.com/Clever/redshifter/s3filepath"
 )
 
 type dbExecCloser interface {
@@ -91,26 +94,23 @@ func (r *Redshift) logAndExec(cmd string) (sql.Result, error) {
 
 // RunJSONCopy copies JSON data present in an S3 file into a redshift table.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
-// if not using jsonPaths, set to "auto"
-func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths string, creds, gzip bool) error {
+// if not using jsonPaths, set s3File.JSONPaths to "auto"
+func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
 	if creds {
-		credSQL = `CREDENTIALS 'aws_access_key_id=?;aws_secret_access_key=?'`
-		credArgs = []interface{}{r.s3Info.AccessID, r.s3Info.SecretKey}
+		credSQL = `CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+		credArgs = []interface{}{f.Bucket.AccessID(), f.Bucket.SecretKey()}
 	}
 	gzipSQL := ""
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copySQL := `COPY "?"."?" FROM '?' WITH ? JSON '?' REGION '?' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`
-	copyStmt, err := r.Prepare(fmt.Sprintf(copySQL, credSQL))
-	if err != nil {
-		return err
-	}
-	args := []interface{}{schema, table, filename, gzipSQL, jsonPaths, r.s3Info.Region}
-	log.Printf("Running command: %s with args: %v", copySQL, args)
-	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region(), credSQL)
+	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
+	log.Printf("Running command: %s", copySQL)
+	// can't use prepare b/c of redshift-specific syntax that postgres does not like
+	_, err := tx.Exec(fullCopySQL)
 	return err
 }
 
