@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"sort"
-	"strings"
 
 )
 
@@ -112,41 +110,6 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths st
 	}
 	args := []interface{}{schema, table, filename, gzipSQL, jsonPaths, r.s3Info.Region}
 	log.Printf("Running command: %s with args: %v", copySQL, args)
-	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
-	return err
-}
-
-// RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table
-// this is meant to be run in a transaction, so the first arg must be a sql.Tx
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error {
-	var credSQL string
-	var credArgs []interface{}
-	if creds {
-		credSQL = `CREDENTIALS 'aws_access_key_id=?;aws_secret_access_key=?'`
-		credArgs = []interface{}{r.s3Info.AccessID, r.s3Info.SecretKey}
-	}
-	gzipSQL := ""
-	if gzip {
-		gzipSQL = "GZIP"
-	}
-
-	cols := sortableColumns{}
-	cols = append(cols, ts.Columns...)
-	sort.Sort(cols)
-	colStrings := []string{}
-	for _, ci := range cols {
-		colStrings = append(colStrings, ci.Name)
-	}
-
-	copySQL := fmt.Sprintf(`COPY "?"."?" (?) FROM '?' WITH REGION '?' ? CSV DELIMITER '?'`)
-	opts := "IGNOREHEADER 0 ACCEPTINVCHARS TRUNCATECOLUMNS TRIMBLANKS BLANKSASNULL EMPTYASNULL DATEFORMAT 'auto' ACCEPTANYDATE STATUPDATE ON COMPUPDATE ON"
-	fullCopySQL := fmt.Sprintf("%s %s %s", copySQL, opts, credSQL)
-	copyStmt, err := r.Prepare(fullCopySQL)
-	if err != nil {
-		return err
-	}
-	args := []interface{}{schema, table, strings.Join(colStrings, ", "), file, r.s3Info.Region, gzipSQL, delimiter}
-	log.Printf("Running command: %s with args: %v", fullCopySQL, args)
 	_, err = tx.Stmt(copyStmt).Exec(append(args, credArgs...)...)
 	return err
 }

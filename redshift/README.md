@@ -57,14 +57,6 @@ NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
 
-#### func (*Redshift) RunCSVCopy
-
-```go
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error
-```
-RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table this is
-meant to be run in a transaction, so the first arg must be a sql.Tx
-
 #### func (*Redshift) RunJSONCopy
 
 ```go
