@@ -58,7 +58,7 @@ need to pass s3 info unless doing a COPY operation
 #### func (*Redshift) GetTableFromConf
 
 ```go
-func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error)
+func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error)
 ```
 GetTableFromConf returns the redshift table representation of the s3 conf file
 It opens, unmarshalls, and does very very simple validation of the conf file

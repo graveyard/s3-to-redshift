@@ -124,36 +124,35 @@ func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift,
 // GetTableFromConf returns the redshift table representation of the s3 conf file
 // It opens, unmarshalls, and does very very simple validation of the conf file
 // This belongs here - s3filepath should not have to know about redshift tables
-func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (Table, error) {
+func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error) {
 	var tempSchema map[string]Table
-	var emptyTable Table
 
 	log.Printf("Parsing file: %s", f.ConfFile)
 	reader, err := pathio.Reader(f.ConfFile)
 	if err != nil {
-		return emptyTable, fmt.Errorf("error opening conf file: %s", err)
+		return nil, fmt.Errorf("error opening conf file: %s", err)
 	}
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return emptyTable, err
+		return nil, err
 	}
 	if err := yaml.Unmarshal(data, &tempSchema); err != nil {
-		return emptyTable, fmt.Errorf("Warning: could not parse file %s, err: %s\n", f.ConfFile, err)
+		return nil, fmt.Errorf("Warning: could not parse file %s, err: %s\n", f.ConfFile, err)
 	}
 
 	// data we want is nested in a map - possible to have multiple tables in a conf file
 	t, ok := tempSchema[f.Table]
 	if !ok {
-		return emptyTable, fmt.Errorf("can't find table in conf")
+		return nil, fmt.Errorf("can't find table in conf")
 	}
 	if t.Meta.Schema != f.Schema {
-		return emptyTable, fmt.Errorf("mismatched schema, conf: %s, file: %s", t.Meta.Schema, f.Schema)
+		return nil, fmt.Errorf("mismatched schema, conf: %s, file: %s", t.Meta.Schema, f.Schema)
 	}
 	if t.Meta.DataDateColumn == "" {
-		return emptyTable, fmt.Errorf("Data Date Column must be set!")
+		return nil, fmt.Errorf("Data Date Column must be set!")
 	}
 
-	return t, nil
+	return &t, nil
 }
 
 // GetTableMetadata looks for a table and returns both the Table representation

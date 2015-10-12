@@ -148,7 +148,7 @@ func main() {
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, *inputConf, inputTable, *targetTable, *truncate), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, *inputTable, *targetTable, *truncate), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}
