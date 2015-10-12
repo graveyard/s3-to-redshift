@@ -57,15 +57,6 @@ NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
 
-#### func (*Redshift) RefreshTables
-
-```go
-func (r *Redshift) RefreshTables(
-	tables map[string]Table, schema, s3prefix string, delim rune) error
-```
-RefreshTables refreshes multiple tables in parallel and returns an error if any
-of the copies fail.
-
 #### func (*Redshift) RunCSVCopy
 
 ```go
@@ -98,15 +89,6 @@ performance reasons
 func (r *Redshift) VacuumAnalyze() error
 ```
 VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is
-useful for recreating the indices after a database has been modified and
-updating the query planner.
-
-#### func (*Redshift) VacuumAnalyzeTable
-
-```go
-func (r *Redshift) VacuumAnalyzeTable(schema, table string) error
-```
-VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is
 useful for recreating the indices after a database has been modified and
 updating the query planner.
 

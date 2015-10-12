@@ -8,8 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Clever/redshifter/postgres"
-	"github.com/facebookgo/errgroup"
 )
 
 type dbExecCloser interface {
@@ -164,56 +162,10 @@ func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
 	return err
 }
 
-// RefreshTable refreshes a single table by truncating it and COPY-ing gzipped CSV data into it
-// This is done within a transaction for safety
-func (r *Redshift) refreshTable(schema, name, file string, ts Table, delim rune) error {
-	tx, err := r.Begin()
-	if err != nil {
-		return err
-	}
-	if err = r.RunTruncate(tx, schema, name); err != nil {
-		tx.Rollback()
-		return err
-	}
-	if err = r.RunCSVCopy(tx, schema, name, file, ts, delim, true, true); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit()
-}
-
-// RefreshTables refreshes multiple tables in parallel and returns an error if any of the copies
-// fail.
-func (r *Redshift) RefreshTables(
-	tables map[string]Table, schema, s3prefix string, delim rune) error {
-	group := new(errgroup.Group)
-	for name, ts := range tables {
-		group.Add(1)
-		go func(name string, ts Table) {
-			if err := r.refreshTable(schema, name, postgres.S3Filename(s3prefix, name), ts, delim); err != nil {
-				group.Error(err)
-			}
-			group.Done()
-		}(name, ts)
-	}
-	errs := new(errgroup.Group)
-	if err := group.Wait(); err != nil {
-		errs.Error(err)
-	}
-	// Use errs.Wait() to group the two errors into a single error object.
-	return errs.Wait()
-}
-
 // VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is useful for
 // recreating the indices after a database has been modified and updating the query planner.
 func (r *Redshift) VacuumAnalyze() error {
-	_, err := r.logAndExec("VACUUM FULL; ANALYZE")
-	return err
-}
-
-// VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is useful for
-// recreating the indices after a database has been modified and updating the query planner.
-func (r *Redshift) VacuumAnalyzeTable(schema, table string) error {
-	_, err := r.logAndExec(fmt.Sprintf(`VACUUM FULL "%s"."%s"; ANALYZE "%s"."%s"`, schema, table, schema, table))
+	log.Printf("Executing 'VACCUM FULL; ANALYZE'")
+	_, err := r.Exec("VACUUM FULL; ANALYZE")
 	return err
 }

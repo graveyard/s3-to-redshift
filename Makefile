@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 PKG := github.com/Clever/redshifter
-SUBPKG_NAMES := mixpanel postgres redshift
+SUBPKG_NAMES := redshift
 SUBPKGS = $(addprefix $(PKG)/, $(SUBPKG_NAMES))
 PKGS = $(PKG)/cmd/ $(SUBPKGS)
 
