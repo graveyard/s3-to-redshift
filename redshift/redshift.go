@@ -66,16 +66,7 @@ func (c sortableColumns) Len() int           { return len(c) }
 func (c sortableColumns) Less(i, j int) bool { return c[i].Ordinal < c[j].Ordinal }
 func (c sortableColumns) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
-var (
-	// map between the config file and the redshift internal representations for types
-	typeMapping = map[string]string{
-		"boolean":   "boolean",
-		"float":     "float",
-		"int":       "int",
-		"timestamp": "timestamp without time zone", // timestamp with timezone is not supported in redshift
-		"text":      "character varying(256)",      // unfortunately redshift turns text -> varchar 256
-	}
-
+const (
 	// TODO: use parameter placeholder syntax instead
 	existQueryFormat = `SELECT table_name
 			  FROM information_schema.tables WHERE table_schema='%s' AND table_name='%s'`
@@ -104,6 +95,17 @@ WHERE c.relkind = 'r'::char
     AND n.nspname = '%s'  -- Replace with schema name
     AND c.relname = '%s'  -- Replace with table name
      AND f.attnum > 0 ORDER BY f.attnum`
+)
+
+var (
+	// map between the config file and the redshift internal representations for types
+	typeMapping = map[string]string{
+		"boolean":   "boolean",
+		"float":     "float",
+		"int":       "int",
+		"timestamp": "timestamp without time zone", // timestamp with timezone is not supported in redshift
+		"text":      "character varying(256)",      // unfortunately redshift turns text -> varchar 256
+	}
 )
 
 // NewRedshift returns a pointer to a new redshift object using configuration values passed in
