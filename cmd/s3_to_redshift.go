@@ -146,7 +146,7 @@ func main() {
 
 		// unless --force, don't update unless input data is new
 		if !inputConf.DataDate.After(*lastTargetData) {
-			if *force != true {
+			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return
 			}
