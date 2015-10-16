@@ -59,8 +59,7 @@ func TestFindLatestInputData(t *testing.T) {
 	res := s3.ListResp{}
 	res.Contents = []s3.Key{}
 	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "", expectedDate, &res)
-	returnedFile, err := FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "", &expFile.DataDate)
-	assert.Nil(t, returnedFile)
+	returnedDate, err := FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "no files found"))
 	}
@@ -73,8 +72,7 @@ func TestFindLatestInputData(t *testing.T) {
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "", expectedDate, &res)
-	returnedFile, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "", &expFile.DataDate)
-	assert.Nil(t, returnedFile)
+	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "too many files"))
 	}
@@ -89,20 +87,9 @@ func TestFindLatestInputData(t *testing.T) {
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "bar.yml", expectedDate, &res)
-	returnedFile, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "bar.yml", &expFile.DataDate)
+	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.NoError(t, err) {
-		assert.Equal(t, expFile, *returnedFile)
-	}
-
-	// test generated conf file
-	res = s3.ListResp{}
-	res.Contents = []s3.Key{getKeyFromDate(schema, table, expectedDate)}
-	confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml",
-		bucket, schema, table, expectedDate.Format(time.RFC3339))
-	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, confFile, expectedDate, &res)
-	returnedFile, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "", &expFile.DataDate)
-	if assert.NoError(t, err) {
-		assert.Equal(t, expFile, *returnedFile)
+		assert.Equal(t, expectedDate, returnedDate)
 	}
 
 	// test no match
@@ -114,8 +101,7 @@ func TestFindLatestInputData(t *testing.T) {
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "bar.yml", expectedDate, &res)
-	returnedFile, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "bar.yml", &expFile.DataDate)
-	assert.Nil(t, returnedFile)
+	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "3 files found, but none found"))
 	}
@@ -130,10 +116,26 @@ func TestFindLatestInputData(t *testing.T) {
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "bar.yml", date3, &res)
-	returnedFile, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, "bar.yml", nil)
+	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, nil)
 	if assert.NoError(t, err) {
-		assert.Equal(t, expFile, *returnedFile)
+		assert.Equal(t, date3, returnedDate)
 	}
+}
+
+func TestCreateS3File(t *testing.T) {
+	bucket, schema, table, region, accessID, secretKey := "b", "s", "t", "r", "aID", "sk"
+	// test generated conf file
+	expConf := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml",
+		bucket, schema, table, expectedDate.Format(time.RFC3339))
+	res := s3.ListResp{}
+	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, expectedDate, &res)
+	returnedFile := CreateS3File(expFile.Bucket, schema, table, "", expectedDate)
+	assert.Equal(t, expFile, *returnedFile)
+
+	// test supplied conf file
+	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "foo", expectedDate, &res)
+	returnedFile = CreateS3File(expFile.Bucket, schema, table, "foo", expectedDate)
+	assert.Equal(t, expFile, *returnedFile)
 }
 
 func TestDateFromFileName(t *testing.T) {

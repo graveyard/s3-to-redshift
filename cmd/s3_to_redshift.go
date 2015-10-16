@@ -132,8 +132,10 @@ func main() {
 		}
 		// find most recent s3 file
 		// each input will have a configuration associated with it, output by the previous worker
-		inputConf, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, *configFile, overrideDate)
+		dataDate, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, overrideDate)
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
+
+		inputConf := s3filepath.CreateS3File(&bucket, *inputSchemaName, t, *configFile, dataDate)
 
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")

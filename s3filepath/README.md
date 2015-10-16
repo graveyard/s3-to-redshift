@@ -5,6 +5,15 @@
 
 ## Usage
 
+#### func  FindLatestInputData
+
+```go
+func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time.Time) (time.Time, error)
+```
+FindLatestInputData looks for the most recent file matching the prefix created
+by <schema>_<table>, using the RFC3999 date in the filename and returns the date
+associated with that data
+
 #### type Bucketer
 
 ```go
@@ -87,13 +96,13 @@ type S3File struct {
 
 S3File holds everything needed to run a COPY on the file
 
-#### func  FindLatestInputData
+#### func  CreateS3File
 
 ```go
-func FindLatestInputData(bucket Bucketer, schema, table, suppliedConf string, targetDate *time.Time) (*S3File, error)
+func CreateS3File(bucket Bucketer, schema, table string, suppliedConf string, date time.Time) *S3File
 ```
-FindLatestInputData looks for the most recent file matching the prefix created
-by <schema>_<table>, using the RFC3999 date in the filename
+GetS3FileFromDate creates an S3File object with either a supplied config file or
+the function generates a config file name
 
 #### func (*S3File) GetDataFilename
 

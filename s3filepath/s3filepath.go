@@ -80,50 +80,57 @@ func (k byTimeStampDesc) Len() int           { return len(k) }
 func (k byTimeStampDesc) Swap(i, j int)      { k[i], k[j] = k[j], k[i] }
 func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // reversing so we get sorted by date desc
 
+// CreateS3File creates an S3File object with either a supplied config
+// file or the function generates a config file name
+func CreateS3File(bucket Bucketer, schema, table string, suppliedConf string, date time.Time) *S3File {
+	// set configuration location
+	confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket.Name(), schema, table, date.Format(time.RFC3339))
+	if suppliedConf != "" {
+		confFile = suppliedConf
+	}
+	// hardcode json.gz
+	inputObj := S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
+	return &inputObj
+}
+
 // FindLatestInputData looks for the most recent file matching the prefix
 // created by <schema>_<table>, using the RFC3999 date in the filename
-func FindLatestInputData(bucket Bucketer, schema, table, suppliedConf string, targetDate *time.Time) (*S3File, error) {
-
+// and returns the date associated with that data
+func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time.Time) (time.Time, error) {
+	var returnDate time.Time
 	// when we list, we want all files that look like <schema>_<table> and we look at the dates
 	search := fmt.Sprintf("%s_%s", schema, table)
 	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
 	listRes, err := bucket.List(search, "", "", maxKeys)
 	if err != nil {
-		return nil, err
+		return returnDate, err
 	}
 	items := listRes.Contents
 	if len(items) == 0 {
-		return nil, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
+		return returnDate, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
 	}
 	if len(items) >= maxKeys {
-		return nil, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
+		return returnDate, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
 	}
 	sort.Sort(byTimeStampDesc(items)) // sort by ts desc
 
 	for _, item := range items {
-		date, err := getDateFromFileName(item.Key)
+		returnDate, err := getDateFromFileName(item.Key)
 		// ignore malformed s3 files
 		if err != nil {
 			log.Printf("ignoring file: %s, err is: %s", item.Key, err)
 		} else {
-			if targetDate != nil && !targetDate.Equal(date) {
-				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, date)
+			if targetDate != nil && !targetDate.Equal(returnDate) {
+				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, returnDate)
 			} else {
-				// set configuration location
-				confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket.Name(), schema, table, date.Format(time.RFC3339))
-				if suppliedConf != "" {
-					confFile = suppliedConf
-				}
-				// hardcode json.gz
-				inputObj := S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
-				return &inputObj, nil
+				return returnDate, nil
 			}
 		}
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
 		len(items), bucket.Name(), search, targetDate, items[0].Key)
 
-	return nil, notFoundErr
+	return returnDate, notFoundErr
 }
 
 // only used internally, just to parse the data date in the filename
