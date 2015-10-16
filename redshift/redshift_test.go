@@ -226,7 +226,7 @@ func TestCreateTable(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunCreateTable(tx, dbTable))
+	assert.NoError(t, mockrs.CreateTable(tx, dbTable))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -270,7 +270,7 @@ func TestUpdateTable(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunUpdateTable(tx, targetTable, inputTable))
+	assert.NoError(t, mockrs.UpdateTable(tx, targetTable, inputTable))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -296,7 +296,7 @@ func TestUpdateTable(t *testing.T) {
 	}
 	tx, err = mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunUpdateTable(tx, fewerColumnsTargetTable, inputTable))
+	assert.NoError(t, mockrs.UpdateTable(tx, fewerColumnsTargetTable, inputTable))
 	assert.NoError(t, tx.Commit())
 
 	// test extra columns (no error currently)
@@ -313,7 +313,7 @@ func TestUpdateTable(t *testing.T) {
 
 	tx, err = mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunUpdateTable(tx, targetTable, fewerColumnsInputTable))
+	assert.NoError(t, mockrs.UpdateTable(tx, targetTable, fewerColumnsInputTable))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -341,7 +341,7 @@ func TestUpdateTable(t *testing.T) {
 
 		tx, err = mockrs.Begin()
 		assert.NoError(t, err)
-		err = mockrs.RunUpdateTable(tx, targetTable, mismatchingColInputTable)
+		err = mockrs.UpdateTable(tx, targetTable, mismatchingColInputTable)
 		log.Println("mismatch err: ", err)
 		assert.Error(t, err)
 		assert.NoError(t, tx.Commit())
@@ -352,7 +352,7 @@ func TestUpdateTable(t *testing.T) {
 	}
 }
 
-func TestRunJSONCopy(t *testing.T) {
+func TestJSONCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
 	b := s3filepath.S3Bucket{s3.Bucket{}, bucket, region, accessID, secretKey}
@@ -381,7 +381,7 @@ func TestRunJSONCopy(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunJSONCopy(tx, s3File, true, true))
+	assert.NoError(t, mockrs.JSONCopy(tx, s3File, true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -404,7 +404,7 @@ func TestRunJSONCopy(t *testing.T) {
 
 	tx, err = mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunJSONCopy(tx, s3File, false, false))
+	assert.NoError(t, mockrs.JSONCopy(tx, s3File, false, false))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -412,7 +412,7 @@ func TestRunJSONCopy(t *testing.T) {
 	}
 }
 
-func TestRunTruncate(t *testing.T) {
+func TestTruncate(t *testing.T) {
 	schema, table := "test_schema", "test_table"
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -426,7 +426,7 @@ func TestRunTruncate(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.RunTruncate(tx, schema, table))
+	assert.NoError(t, mockrs.Truncate(tx, schema, table))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {

@@ -55,6 +55,14 @@ NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
 
+#### func (*Redshift) CreateTable
+
+```go
+func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error
+```
+CreateTable runs the full create table command in the provided transaction,
+given a redshift representation of the table.
+
 #### func (*Redshift) GetTableFromConf
 
 ```go
@@ -73,39 +81,31 @@ GetTableMetadata looks for a table and returns both the Table representation of
 the db table and the last data in the table, if that exists if the table does
 not exist it returns an empty table but does not error
 
-#### func (*Redshift) RunCreateTable
+#### func (*Redshift) JSONCopy
 
 ```go
-func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error
+func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error
 ```
-RunCreateTable runs the full create table command in the provided transaction,
-given a redshift representation of the table.
+JSONCopy copies JSON data present in an S3 file into a redshift table. this is
+meant to be run in a transaction, so the first arg must be a sql.Tx if not using
+jsonPaths, set s3File.JSONPaths to "auto"
 
-#### func (*Redshift) RunJSONCopy
+#### func (*Redshift) Truncate
 
 ```go
-func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error
+func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error
 ```
-RunJSONCopy copies JSON data present in an S3 file into a redshift table. this
-is meant to be run in a transaction, so the first arg must be a sql.Tx if not
-using jsonPaths, set s3File.JSONPaths to "auto"
-
-#### func (*Redshift) RunTruncate
-
-```go
-func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error
-```
-RunTruncate deletes all items from a table, given a transaction, a schema string
+Truncate deletes all items from a table, given a transaction, a schema string
 and a table name you shuold run vacuum and analyze soon after doing this for
 performance reasons
 
-#### func (*Redshift) RunUpdateTable
+#### func (*Redshift) UpdateTable
 
 ```go
-func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) error
+func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error
 ```
-RunUpdateTable figures out what columns we need to add to the target table based
-on the input table, and completes this action in the transaction provided Note:
+UpdateTable figures out what columns we need to add to the target table based on
+the input table, and completes this action in the transaction provided Note:
 only supports adding columns currently, not updating existing columns or
 removing them
 

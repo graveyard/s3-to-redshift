@@ -63,16 +63,16 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable, tar
 	// TRUNCATE for dimension tables, but not fact tables
 	if truncate && !createTable {
 		log.Println("truncating table!")
-		if err = db.RunTruncate(tx, inputConf.Schema, inputTable.Name); err != nil {
+		if err = db.Truncate(tx, inputConf.Schema, inputTable.Name); err != nil {
 			return fmt.Errorf("err running truncate table: %s", err)
 		}
 	}
 	if createTable {
-		if err = db.RunCreateTable(tx, inputTable); err != nil {
+		if err = db.CreateTable(tx, inputTable); err != nil {
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
-		if err = db.RunUpdateTable(tx, targetTable, inputTable); err != nil {
+		if err = db.UpdateTable(tx, targetTable, inputTable); err != nil {
 			return fmt.Errorf("err running update table: %s", err)
 		}
 	}
@@ -80,7 +80,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable, tar
 	// COPY direct into it, ok to do since we're in a transaction
 	// assuming that we always want to copy from s3 and have gzip, so last 2 params are true
 	// if we want to change that, we should figure this out from the filename
-	if err = db.RunJSONCopy(tx, inputConf, true, true); err != nil {
+	if err = db.JSONCopy(tx, inputConf, true, true); err != nil {
 		return fmt.Errorf("err running JSON copy: %s", err)
 	}
 

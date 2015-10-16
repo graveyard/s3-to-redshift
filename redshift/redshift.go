@@ -239,9 +239,9 @@ func getColumnSQL(c ColInfo) string {
 	return fmt.Sprintf(" %s %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
 }
 
-// RunCreateTable runs the full create table command in the provided transaction, given a
+// CreateTable runs the full create table command in the provided transaction, given a
 // redshift representation of the table.
-func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error {
+func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error {
 	var columnSQL []string
 	for _, c := range table.Columns {
 		columnSQL = append(columnSQL, getColumnSQL(c))
@@ -259,10 +259,10 @@ func (r *Redshift) RunCreateTable(tx *sql.Tx, table Table) error {
 	return err
 }
 
-// RunUpdateTable figures out what columns we need to add to the target table based on the
+// UpdateTable figures out what columns we need to add to the target table based on the
 // input table, and completes this action in the transaction provided
 // Note: only supports adding columns currently, not updating existing columns or removing them
-func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
+func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
 	columnOps := []string{}
 	for _, inCol := range inputTable.Columns {
 		var existingCol ColInfo
@@ -320,10 +320,10 @@ func (r *Redshift) RunUpdateTable(tx *sql.Tx, targetTable, inputTable Table) err
 	return err
 }
 
-// RunJSONCopy copies JSON data present in an S3 file into a redshift table.
+// JSONCopy copies JSON data present in an S3 file into a redshift table.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
 // if not using jsonPaths, set s3File.JSONPaths to "auto"
-func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
+func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
 	if creds {
@@ -342,9 +342,9 @@ func (r *Redshift) RunJSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool
 	return err
 }
 
-// RunTruncate deletes all items from a table, given a transaction, a schema string and a table name
+// Truncate deletes all items from a table, given a transaction, a schema string and a table name
 // you shuold run vacuum and analyze soon after doing this for performance reasons
-func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error {
+func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error {
 	truncStmt, err := tx.Prepare(`DELETE FROM "?"."?"`)
 	if err != nil {
 		return err
