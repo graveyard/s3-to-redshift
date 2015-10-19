@@ -1,6 +1,6 @@
 # redshift
 --
-    import "github.com/Clever/redshifter/redshift"
+    import "github.com/Clever/s3-to-redshift/redshift"
 
 
 ## Usage

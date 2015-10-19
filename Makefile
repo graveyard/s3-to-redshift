@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-PKG := github.com/Clever/redshifter
+PKG := github.com/Clever/s3-to-redshift
 SUBPKG_NAMES := redshift s3filepath
 SUBPKGS = $(addprefix $(PKG)/, $(SUBPKG_NAMES))
 PKGS = $(PKG)/cmd/ $(SUBPKGS)
@@ -7,7 +7,7 @@ PKGS = $(PKG)/cmd/ $(SUBPKGS)
 .PHONY: build test golint docs $(PKG) $(PKGS)
 
 build: test
-	go build -o build/s3-to-redshift github.com/Clever/redshifter/cmd
+	go build -o build/s3-to-redshift github.com/Clever/s3-to-redshift/cmd
 
 test: docs $(PKGS)
 

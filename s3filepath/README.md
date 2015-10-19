@@ -1,6 +1,6 @@
 # s3filepath
 --
-    import "github.com/Clever/redshifter/s3filepath"
+    import "github.com/Clever/s3-to-redshift/s3filepath"
 
 
 ## Usage

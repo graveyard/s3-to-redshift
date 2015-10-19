@@ -14,7 +14,7 @@ import (
 
 	"github.com/mitchellh/goamz/s3"
 
-	"github.com/Clever/redshifter/s3filepath"
+	"github.com/Clever/s3-to-redshift/s3filepath"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 )

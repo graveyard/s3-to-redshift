@@ -14,7 +14,7 @@ import (
 	"github.com/Clever/pathio"
 	_ "github.com/lib/pq" // Postgres driver.
 
-	"github.com/Clever/redshifter/s3filepath"
+	"github.com/Clever/s3-to-redshift/s3filepath"
 )
 
 type dbExecCloser interface {

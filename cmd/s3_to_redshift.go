@@ -14,8 +14,8 @@ import (
 	"github.com/mitchellh/goamz/s3"
 	env "github.com/segmentio/go-env"
 
-	redshift "github.com/Clever/redshifter/redshift"
-	s3filepath "github.com/Clever/redshifter/s3filepath"
+	redshift "github.com/Clever/s3-to-redshift/redshift"
+	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
 )
 
 var (
