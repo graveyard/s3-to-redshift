@@ -1,6 +1,6 @@
 # redshift
 --
-    import "github.com/Clever/redshifter/redshift"
+    import "github.com/Clever/s3-to-redshift/redshift"
 
 
 ## Usage
@@ -34,9 +34,7 @@ type Meta struct {
 
 Meta holds information that might be not in Redshift or annoying to access in
 this case, we want to know the schema a table is part of and the column which
-corresponds to the timestamp at which the data was gathered NOTE: this will be
-useful for the s3-to-redshift worker, but is currently not very useful same with
-the yaml info
+corresponds to the timestamp at which the data was gathered
 
 #### type Redshift
 
@@ -51,46 +49,65 @@ redshift database.
 #### func  NewRedshift
 
 ```go
-func NewRedshift(host, port, db, user, password string, timeout int, s3Info S3Info) (*Redshift, error)
+func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error)
 ```
 NewRedshift returns a pointer to a new redshift object using configuration
 values passed in on instantiation and the AWS env vars we assume exist Don't
 need to pass s3 info unless doing a COPY operation
 
-#### func (*Redshift) RefreshTables
+#### func (*Redshift) CreateTable
 
 ```go
-func (r *Redshift) RefreshTables(
-	tables map[string]Table, schema, s3prefix string, delim rune) error
+func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error
 ```
-RefreshTables refreshes multiple tables in parallel and returns an error if any
-of the copies fail.
+CreateTable runs the full create table command in the provided transaction,
+given a redshift representation of the table.
 
-#### func (*Redshift) RunCSVCopy
+#### func (*Redshift) GetTableFromConf
 
 ```go
-func (r *Redshift) RunCSVCopy(tx *sql.Tx, schema, table, file string, ts Table, delimiter rune, creds, gzip bool) error
+func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error)
 ```
-RunCSVCopy copies gzipped CSV data from an S3 file into a redshift table this is
-meant to be run in a transaction, so the first arg must be a sql.Tx
+GetTableFromConf returns the redshift table representation of the s3 conf file
+It opens, unmarshalls, and does very very simple validation of the conf file
+This belongs here - s3filepath should not have to know about redshift tables
 
-#### func (*Redshift) RunJSONCopy
+#### func (*Redshift) GetTableMetadata
 
 ```go
-func (r *Redshift) RunJSONCopy(tx *sql.Tx, schema, table, filename, jsonPaths string, creds, gzip bool) error
+func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Table, *time.Time, error)
 ```
-RunJSONCopy copies JSON data present in an S3 file into a redshift table. this
-is meant to be run in a transaction, so the first arg must be a sql.Tx if not
-using jsonPaths, set to "auto"
+GetTableMetadata looks for a table and returns both the Table representation of
+the db table and the last data in the table, if that exists if the table does
+not exist it returns an empty table but does not error
 
-#### func (*Redshift) RunTruncate
+#### func (*Redshift) JSONCopy
 
 ```go
-func (r *Redshift) RunTruncate(tx *sql.Tx, schema, table string) error
+func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error
 ```
-RunTruncate deletes all items from a table, given a transaction, a schema string
+JSONCopy copies JSON data present in an S3 file into a redshift table. this is
+meant to be run in a transaction, so the first arg must be a sql.Tx if not using
+jsonPaths, set s3File.JSONPaths to "auto"
+
+#### func (*Redshift) Truncate
+
+```go
+func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error
+```
+Truncate deletes all items from a table, given a transaction, a schema string
 and a table name you shuold run vacuum and analyze soon after doing this for
 performance reasons
+
+#### func (*Redshift) UpdateTable
+
+```go
+func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error
+```
+UpdateTable figures out what columns we need to add to the target table based on
+the input table, and completes this action in the transaction provided Note:
+only supports adding columns currently, not updating existing columns or
+removing them
 
 #### func (*Redshift) VacuumAnalyze
 
@@ -100,27 +117,6 @@ func (r *Redshift) VacuumAnalyze() error
 VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is
 useful for recreating the indices after a database has been modified and
 updating the query planner.
-
-#### func (*Redshift) VacuumAnalyzeTable
-
-```go
-func (r *Redshift) VacuumAnalyzeTable(schema, table string) error
-```
-VacuumAnalyzeTable performs VACUUM FULL; ANALYZE on a specific table. This is
-useful for recreating the indices after a database has been modified and
-updating the query planner.
-
-#### type S3Info
-
-```go
-type S3Info struct {
-	Region    string
-	AccessID  string
-	SecretKey string
-}
-```
-
-S3Info holds the information necessary to copy data from s3 buckets
 
 #### type Table
 
@@ -132,5 +128,4 @@ type Table struct {
 }
 ```
 
-Table is our representation of a Redshift table the main difference is an added
-metadata section and YAML unmarshalling guidance
+Table is our representation of a Redshift table
