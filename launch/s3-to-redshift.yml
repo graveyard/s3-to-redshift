@@ -11,3 +11,5 @@ env:
   - PG_PORT
   - PG_HOST
   - PG_DATABASE
+dependencies:
+- gearmand
