@@ -47,32 +47,25 @@ func fatalIfErr(err error, msg string) {
 
 // in a transaction, truncate, create or update, and then copy from the s3 JSON file
 // yell loudly if there is anything different in the target table compared to config (different distkey, etc)
-func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable, targetTable redshift.Table, truncate bool) error {
-	// determine if target table exists
-	// can't compare to empty struct b/c of list
-	createTable := false
-	if targetTable.Name == "" {
-		createTable = true
-	}
-
+func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate bool) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 
 	// TRUNCATE for dimension tables, but not fact tables
-	if truncate && !createTable {
+	if truncate && targetTable != nil {
 		log.Println("truncating table!")
 		if err = db.Truncate(tx, inputConf.Schema, inputTable.Name); err != nil {
 			return fmt.Errorf("err running truncate table: %s", err)
 		}
 	}
-	if createTable {
+	if targetTable == nil {
 		if err = db.CreateTable(tx, inputTable); err != nil {
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
-		if err = db.UpdateTable(tx, targetTable, inputTable); err != nil {
+		if err = db.UpdateTable(tx, *targetTable, inputTable); err != nil {
 			return fmt.Errorf("err running update table: %s", err)
 		}
 	}
@@ -147,7 +140,7 @@ func main() {
 		}
 
 		// unless --force, don't update unless input data is new
-		if !inputConf.DataDate.After(*lastTargetData) {
+		if lastTargetData != nil && !inputConf.DataDate.After(*lastTargetData) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return
@@ -155,7 +148,7 @@ func main() {
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, *inputConf, *inputTable, *targetTable, *truncate), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}
