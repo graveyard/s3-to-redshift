@@ -8,7 +8,7 @@
 #### func  FindLatestInputData
 
 ```go
-func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time.Time) (time.Time, error)
+func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time.Time) (time.Time, string, error)
 ```
 FindLatestInputData looks for the most recent file matching the prefix created
 by <schema>_<table>, using the RFC3999 date in the filename and returns the date
@@ -99,10 +99,10 @@ S3File holds everything needed to run a COPY on the file
 #### func  CreateS3File
 
 ```go
-func CreateS3File(bucket Bucketer, schema, table string, suppliedConf string, date time.Time) *S3File
+func CreateS3File(bucket Bucketer, schema, table, suffix, suppliedConf string, date time.Time) *S3File
 ```
-GetS3FileFromDate creates an S3File object with either a supplied config file or
-the function generates a config file name
+CreateS3File creates an S3File object with either a supplied config file or the
+function generates a config file name
 
 #### func (*S3File) GetDataFilename
 

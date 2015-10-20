@@ -35,14 +35,14 @@ func (b *MockBucket) List(prefix, delim, marker string, max int) (result *s3.Lis
 	return b.results, nil
 }
 
-func getTestFileWithResults(b, s, t, r, aID, sk, confFile string, date time.Time, res *s3.ListResp) S3File {
+func getTestFileWithResults(b, s, t, suf, r, aID, sk, confFile string, date time.Time, res *s3.ListResp) S3File {
 	mockBucket := MockBucket{s3.Bucket{}, b, r, aID, sk, res}
 	s3File := S3File{
 		Bucket:    &mockBucket,
 		Schema:    s,
 		Table:     t,
 		JSONPaths: "auto",
-		Suffix:    "json.gz",
+		Suffix:    suf,
 		DataDate:  date,
 		ConfFile:  confFile,
 	}
@@ -54,12 +54,12 @@ func getKeyFromDate(schema, table string, date time.Time) s3.Key {
 }
 
 func TestFindLatestInputData(t *testing.T) {
-	bucket, schema, table, region, accessID, secretKey := "b", "s", "t", "r", "aID", "sk"
+	bucket, schema, table, suffix, region, accessID, secretKey := "b", "s", "t", "json.gz", "r", "aID", "sk"
 	// test no files found
 	res := s3.ListResp{}
 	res.Contents = []s3.Key{}
-	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "", expectedDate, &res)
-	returnedDate, err := FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
+	expFile := getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "", expectedDate, &res)
+	returnedDate, returnedSuffix, err := FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "no files found"))
 	}
@@ -71,8 +71,8 @@ func TestFindLatestInputData(t *testing.T) {
 		keys = append(keys, s3.Key{})
 	}
 	res.Contents = keys
-	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "", expectedDate, &res)
-	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
+	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "", expectedDate, &res)
+	returnedDate, returnedSuffix, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "too many files"))
 	}
@@ -86,8 +86,8 @@ func TestFindLatestInputData(t *testing.T) {
 		getKeyFromDate(schema, table, date3),
 	}
 	res.Contents = keys
-	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "bar.yml", expectedDate, &res)
-	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
+	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", expectedDate, &res)
+	returnedDate, returnedSuffix, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.NoError(t, err) {
 		assert.Equal(t, expectedDate, returnedDate)
 	}
@@ -100,8 +100,8 @@ func TestFindLatestInputData(t *testing.T) {
 		getKeyFromDate(schema, table, date3),
 	}
 	res.Contents = keys
-	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "bar.yml", expectedDate, &res)
-	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
+	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", expectedDate, &res)
+	returnedDate, returnedSuffix, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, &expFile.DataDate)
 	if assert.Error(t, err) {
 		assert.Equal(t, true, strings.Contains(err.Error(), "3 files found, but none found"))
 	}
@@ -115,26 +115,27 @@ func TestFindLatestInputData(t *testing.T) {
 		getKeyFromDate(schema, table, date1),
 	}
 	res.Contents = keys
-	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "bar.yml", date3, &res)
-	returnedDate, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, nil)
+	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", date3, &res)
+	returnedDate, returnedSuffix, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, nil)
 	if assert.NoError(t, err) {
 		assert.Equal(t, date3, returnedDate)
+		assert.Equal(t, suffix, returnedSuffix)
 	}
 }
 
 func TestCreateS3File(t *testing.T) {
-	bucket, schema, table, region, accessID, secretKey := "b", "s", "t", "r", "aID", "sk"
+	bucket, schema, table, suffix, region, accessID, secretKey := "b", "s", "t", "suf", "r", "aID", "sk"
 	// test generated conf file
 	expConf := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml",
 		bucket, schema, table, expectedDate.Format(time.RFC3339))
 	res := s3.ListResp{}
-	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, expectedDate, &res)
-	returnedFile := CreateS3File(expFile.Bucket, schema, table, "", expectedDate)
+	expFile := getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, expConf, expectedDate, &res)
+	returnedFile := CreateS3File(expFile.Bucket, schema, table, suffix, "", expectedDate)
 	assert.Equal(t, expFile, *returnedFile)
 
 	// test supplied conf file
-	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "foo", expectedDate, &res)
-	returnedFile = CreateS3File(expFile.Bucket, schema, table, "foo", expectedDate)
+	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "foo", expectedDate, &res)
+	returnedFile = CreateS3File(expFile.Bucket, schema, table, suffix, "foo", expectedDate)
 	assert.Equal(t, expFile, *returnedFile)
 }
 
@@ -149,5 +150,20 @@ func TestDateFromFileName(t *testing.T) {
 	date, err = getDateFromFileName("nodate.json")
 	assert.Error(t, err)
 	date, err = getDateFromFileName("bad_date_2015-11-10.json.gz")
+	assert.Error(t, err)
+}
+
+func TestSuffixFromFileName(t *testing.T) {
+	// test valid RFC 3999 date
+	suffix, err := getSuffixFromFileName("foo_bar_2015-11-10T23:00:00Z.json.gz")
+	assert.NoError(t, err)
+	assert.Equal(t, "json.gz", suffix)
+
+	suffix, err = getSuffixFromFileName("foo_bar_2015-11-10T23:00:00Z.json")
+	assert.NoError(t, err)
+	assert.Equal(t, "json", suffix)
+
+	// test bad suffix
+	_, err = getSuffixFromFileName("foo_bar_2015-11-10T23:00:00Z")
 	assert.Error(t, err)
 }

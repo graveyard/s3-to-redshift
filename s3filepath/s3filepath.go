@@ -13,7 +13,7 @@ import (
 
 var (
 	// currently assumes no unix file created timestamp
-	s3Regex = regexp.MustCompile(".*_.*_(.*).json.gz")
+	s3Regex = regexp.MustCompile(".*_.*_(.*?)\\.(.*)")
 )
 
 // Bucketer interface is useful for testing and showing that
@@ -82,63 +82,75 @@ func (k byTimeStampDesc) Less(i, j int) bool { return k[i].Key > k[j].Key } // r
 
 // CreateS3File creates an S3File object with either a supplied config
 // file or the function generates a config file name
-func CreateS3File(bucket Bucketer, schema, table string, suppliedConf string, date time.Time) *S3File {
+func CreateS3File(bucket Bucketer, schema, table, suffix, suppliedConf string, date time.Time) *S3File {
 	// set configuration location
 	confFile := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml", bucket.Name(), schema, table, date.Format(time.RFC3339))
 	if suppliedConf != "" {
 		confFile = suppliedConf
 	}
 	// hardcode json.gz
-	inputObj := S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
+	inputObj := S3File{bucket, schema, table, "auto", suffix, date, confFile}
 	return &inputObj
 }
 
 // FindLatestInputData looks for the most recent file matching the prefix
 // created by <schema>_<table>, using the RFC3999 date in the filename
 // and returns the date associated with that data
-func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time.Time) (time.Time, error) {
+func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time.Time) (time.Time, string, error) {
 	var returnDate time.Time
+	var suffix string
 	// when we list, we want all files that look like <schema>_<table> and we look at the dates
 	search := fmt.Sprintf("%s_%s", schema, table)
 	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
 	listRes, err := bucket.List(search, "", "", maxKeys)
 	if err != nil {
-		return returnDate, err
+		return returnDate, suffix, err
 	}
 	items := listRes.Contents
 	if len(items) == 0 {
-		return returnDate, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
+		return returnDate, suffix, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
 	}
 	if len(items) >= maxKeys {
-		return returnDate, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
+		return returnDate, suffix, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
 	}
 	sort.Sort(byTimeStampDesc(items)) // sort by ts desc
 
 	for _, item := range items {
-		returnDate, err := getDateFromFileName(item.Key)
+		returnDate, errDate := getDateFromFileName(item.Key)
+		suffix, errZip := getSuffixFromFileName(item.Key)
 		// ignore malformed s3 files
-		if err != nil {
-			log.Printf("ignoring file: %s, err is: %s", item.Key, err)
+		if errDate != nil || errZip != nil {
+			log.Printf("ignoring file: %s, errs are: %s, %s", item.Key, errDate, errZip)
 		} else {
 			if targetDate != nil && !targetDate.Equal(returnDate) {
 				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, returnDate)
 			} else {
-				return returnDate, nil
+				return returnDate, suffix, nil
 			}
 		}
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
 		len(items), bucket.Name(), search, targetDate, items[0].Key)
 
-	return returnDate, notFoundErr
+	return returnDate, suffix, notFoundErr
 }
 
 // only used internally, just to parse the data date in the filename
 func getDateFromFileName(fileName string) (time.Time, error) {
 	var retTime time.Time
 	matches := s3Regex.FindStringSubmatch(fileName)
-	if len(matches) < 2 {
+	if len(matches) < 3 {
 		return retTime, fmt.Errorf("issue parsing date from file name: %s, no match for date found", fileName)
 	}
 	return time.Parse(time.RFC3339, matches[1])
+}
+
+// only used internally, just to figure out if it's compressed or not
+// and get the suffix
+func getSuffixFromFileName(fileName string) (string, error) {
+	matches := s3Regex.FindStringSubmatch(fileName)
+	if len(matches) < 3 {
+		return "", fmt.Errorf("issue parsing suffix from file name: %s", fileName)
+	}
+	return matches[2], nil
 }

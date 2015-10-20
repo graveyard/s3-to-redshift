@@ -205,7 +205,7 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Tab
 	}
 
 	// what's the last data in the table?
-	lastDataQuery := fmt.Sprintf("SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1",
+	lastDataQuery := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`,
 		dataDateCol, schema, tableName, dataDateCol)
 	var lastData time.Time
 	if err = r.QueryRow(lastDataQuery).Scan(&lastData); err != nil {
