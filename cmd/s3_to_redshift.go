@@ -73,7 +73,11 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	// COPY direct into it, ok to do since we're in a transaction
 	// assuming that we always want to copy from s3 and have gzip, so last 2 params are true
 	// if we want to change that, we should figure this out from the filename
-	if err = db.JSONCopy(tx, inputConf, true, true); err != nil {
+	gzip := false
+	if strings.Contains(inputConf.Suffix, "gz") {
+		gzip = true
+	}
+	if err = db.JSONCopy(tx, inputConf, true, gzip); err != nil {
 		return fmt.Errorf("err running JSON copy: %s", err)
 	}
 
@@ -125,10 +129,10 @@ func main() {
 		}
 		// find most recent s3 file
 		// each input will have a configuration associated with it, output by the previous worker
-		dataDate, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, overrideDate)
+		dataDate, suffix, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, overrideDate)
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
 
-		inputConf := s3filepath.CreateS3File(&bucket, *inputSchemaName, t, *configFile, dataDate)
+		inputConf := s3filepath.CreateS3File(&bucket, *inputSchemaName, t, suffix, *configFile, dataDate)
 
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")

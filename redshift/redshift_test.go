@@ -155,7 +155,7 @@ func TestGetTableMetadata(t *testing.T) {
 	colInfoRows.AddRow(1, "foo", "int", 5, false, false, false, 0)
 	mock.ExpectQuery(colInfoRegex).WithArgs().WillReturnRows(colInfoRows)
 	// last data
-	dateRegex := fmt.Sprintf(`SELECT %s FROM %s.%s ORDER BY %s DESC LIMIT 1`, dataDateCol, schema, table, dataDateCol)
+	dateRegex := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`, dataDateCol, schema, table, dataDateCol)
 	dateRows := sqlmock.NewRows([]string{"date"})
 	dateRows.AddRow(expectedDate)
 	mock.ExpectQuery(dateRegex).WithArgs().WillReturnRows(dateRows)
