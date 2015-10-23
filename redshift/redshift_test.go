@@ -244,6 +244,7 @@ func TestUpdateTable(t *testing.T) {
 			{3, "test3", "boolean", "true", false, false, false, 0},
 			{2, "test2", "int", "100", true, false, true, 1},
 			{1, "id", "character varying(256)", "", false, true, false, 0},
+			{4, "test4", "double precision", "false", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -255,6 +256,7 @@ func TestUpdateTable(t *testing.T) {
 			{3, "test3", "boolean", "true", false, false, false, 0},
 			{2, "test2", "int", "100", true, false, true, 1},
 			{1, "id", "text", "", false, true, false, 0},
+			{4, "test4", "float", "false", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -278,7 +280,7 @@ func TestUpdateTable(t *testing.T) {
 	}
 
 	// test regular update
-	updateSQL := `ADD COLUMN id character varying(256) PRIMARY KEY , ADD COLUMN test2 int DEFAULT 100 NOT NULL SORTKEY DISTKEY`
+	updateSQL := `ADD COLUMN id character varying(256) PRIMARY KEY , ADD COLUMN test2 int DEFAULT 100 NOT NULL SORTKEY DISTKEY, ADD COLUMN test4 double precision`
 	sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
 	regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
 

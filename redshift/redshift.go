@@ -101,7 +101,7 @@ var (
 	// map between the config file and the redshift internal representations for types
 	typeMapping = map[string]string{
 		"boolean":   "boolean",
-		"float":     "float",
+		"float":     "double precision",
 		"int":       "int",
 		"timestamp": "timestamp without time zone", // timestamp with timezone is not supported in redshift
 		"text":      "character varying(256)",      // unfortunately redshift turns text -> varchar 256
