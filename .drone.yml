@@ -4,6 +4,11 @@ notify:
     recipients:
     - drone@clever.com
 publish:
+  catapult:
+    url: $$catapult_url
+    application: "s3-to-redshift"
+    when:
+      branch: master
   docker:
     docker_host: $$docker_server
     email: $$docker_email
