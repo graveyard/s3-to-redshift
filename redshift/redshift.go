@@ -102,7 +102,7 @@ var (
 	typeMapping = map[string]string{
 		"boolean":   "boolean",
 		"float":     "double precision",
-		"int":       "int",
+		"int":       "integer",
 		"timestamp": "timestamp without time zone", // timestamp with timezone is not supported in redshift
 		"text":      "character varying(256)",      // unfortunately redshift turns text -> varchar 256
 	}
