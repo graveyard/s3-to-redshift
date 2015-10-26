@@ -115,7 +115,7 @@ func TestGetTableMetadata(t *testing.T) {
 		Columns: []ColInfo{{
 			Ordinal:     1,
 			Name:        "foo",
-			Type:        "int",
+			Type:        "integer",
 			DefaultVal:  "5",
 			NotNull:     false,
 			PrimaryKey:  false,
@@ -152,7 +152,7 @@ func TestGetTableMetadata(t *testing.T) {
 	colInfoRows := sqlmock.NewRows([]string{"ordinal", "name", "col_type", "default_val",
 		"not_null", "primary_key", "dist_key", "sort_ord"})
 	// matches expectedTable above, used for returning from sql mock
-	colInfoRows.AddRow(1, "foo", "int", 5, false, false, false, 0)
+	colInfoRows.AddRow(1, "foo", "integer", 5, false, false, false, 0)
 	mock.ExpectQuery(colInfoRegex).WithArgs().WillReturnRows(colInfoRows)
 	// last data
 	dateRegex := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`, dataDateCol, schema, table, dataDateCol)
@@ -210,7 +210,7 @@ func TestCreateTable(t *testing.T) {
 		},
 		Meta: Meta{Schema: schema},
 	}
-	createSQL := `id character varying(256) PRIMARY KEY , test1 int DEFAULT 100 NOT NULL SORTKEY DISTKEY`
+	createSQL := `id character varying(256) PRIMARY KEY , test1 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY`
 	sql := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, schema, table, createSQL)
 	regex := `CREATE TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
 
@@ -242,7 +242,7 @@ func TestUpdateTable(t *testing.T) {
 		// order incorrectly on purpose to ensure ordering works
 		Columns: []ColInfo{
 			{3, "test3", "boolean", "true", false, false, false, 0},
-			{2, "test2", "int", "100", true, false, true, 1},
+			{2, "test2", "integer", "100", true, false, true, 1},
 			{1, "id", "character varying(256)", "", false, true, false, 0},
 			{4, "test4", "double precision", "false", false, false, false, 0},
 		},
@@ -280,7 +280,7 @@ func TestUpdateTable(t *testing.T) {
 	}
 
 	// test regular update
-	updateSQL := `ADD COLUMN id character varying(256) PRIMARY KEY , ADD COLUMN test2 int DEFAULT 100 NOT NULL SORTKEY DISTKEY, ADD COLUMN test4 double precision`
+	updateSQL := `ADD COLUMN id character varying(256) PRIMARY KEY , ADD COLUMN test2 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY, ADD COLUMN test4 double precision`
 	sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
 	regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
 
