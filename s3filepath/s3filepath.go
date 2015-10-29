@@ -88,7 +88,6 @@ func CreateS3File(bucket Bucketer, schema, table, suffix, suppliedConf string, d
 	if suppliedConf != "" {
 		confFile = suppliedConf
 	}
-	// hardcode json.gz
 	inputObj := S3File{bucket, schema, table, "auto", suffix, date, confFile}
 	return &inputObj
 }

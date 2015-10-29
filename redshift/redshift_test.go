@@ -280,13 +280,19 @@ func TestUpdateTable(t *testing.T) {
 	}
 
 	// test regular update
-	updateSQL := `ADD COLUMN id character varying(256) PRIMARY KEY , ADD COLUMN test2 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY, ADD COLUMN test4 double precision`
-	sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
-	regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
 
 	mock.ExpectBegin()
-	mock.ExpectPrepare(sql)
-	mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	for _, updateSQL := range []string{
+		`ADD COLUMN id character varying(256) PRIMARY KEY `,
+		`ADD COLUMN test2 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY `,
+		`ADD COLUMN test4 double precision`,
+	} {
+		sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
+		regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
+
+		mock.ExpectPrepare(sql)
+		mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	}
 	mock.ExpectCommit()
 
 	fewerColumnsTargetTable := Table{
@@ -422,8 +428,8 @@ func TestTruncate(t *testing.T) {
 	mockrs := Redshift{db}
 
 	mock.ExpectBegin()
-	mock.ExpectPrepare(`DELETE FROM "?"."?"`)
-	mock.ExpectExec(`DELETE FROM ".*".".*"`).WithArgs(schema, table).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectPrepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
+	mock.ExpectExec(`DELETE FROM ".*".".*"`).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
 	tx, err := mockrs.Begin()

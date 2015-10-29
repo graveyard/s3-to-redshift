@@ -301,7 +301,8 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 		}
 		var emptyCol ColInfo
 		if existingCol == emptyCol {
-			columnOps = append(columnOps, fmt.Sprintf("ADD COLUMN %s ", getColumnSQL(inCol)))
+			alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" ADD COLUMN %s`, targetTable.Meta.Schema, targetTable.Name, getColumnSQL(inCol))
+			columnOps = append(columnOps, alterSQL)
 		}
 	}
 	if len(columnOps) == 0 {
@@ -309,17 +310,20 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 		return nil
 	}
 
-	alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" %s`,
-		targetTable.Meta.Schema, targetTable.Name, strings.Join(columnOps, ","))
+	// postgres only allows adding one column at a time
+	for _, op := range columnOps {
+		alterStmt, err := tx.Prepare(op)
+		if err != nil {
+			return fmt.Errorf("issue preparing statement: '%s' - err: %s", op, err)
+		}
 
-	alterStmt, err := tx.Prepare(alterSQL)
-	if err != nil {
-		return fmt.Errorf("issue preparing statement: %s", err)
+		log.Printf("Running command: %s", op)
+		_, err = alterStmt.Exec()
+		if err != nil {
+			return err
+		}
 	}
-
-	log.Printf("Running command: %s", alterSQL)
-	_, err = alterStmt.Exec()
-	return err
+	return nil
 }
 
 // JSONCopy copies JSON data present in an S3 file into a redshift table.
@@ -345,13 +349,13 @@ func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) e
 }
 
 // Truncate deletes all items from a table, given a transaction, a schema string and a table name
-// you shuold run vacuum and analyze soon after doing this for performance reasons
+// you should run vacuum and analyze soon after doing this for performance reasons
 func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error {
-	truncStmt, err := tx.Prepare(`DELETE FROM "?"."?"`)
+	truncStmt, err := tx.Prepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
 	if err != nil {
 		return err
 	}
-	_, err = truncStmt.Exec(schema, table)
+	_, err = truncStmt.Exec()
 	return err
 }
 
