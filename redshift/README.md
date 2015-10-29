@@ -96,7 +96,7 @@ jsonPaths, set s3File.JSONPaths to "auto"
 func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error
 ```
 Truncate deletes all items from a table, given a transaction, a schema string
-and a table name you shuold run vacuum and analyze soon after doing this for
+and a table name you should run vacuum and analyze soon after doing this for
 performance reasons
 
 #### func (*Redshift) UpdateTable
