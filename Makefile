@@ -6,6 +6,13 @@ PKGS = $(PKG)/cmd/ $(SUBPKGS)
 
 .PHONY: build test golint docs $(PKG) $(PKGS)
 
+GOVERSION := $(shell go version | grep 1.5)
+ifeq "$(GOVERSION)" ""
+		$(error must be running Go version 1.5)
+endif
+export GO15VENDOREXPERIMENT=1
+
+
 build: test
 	go build -o build/s3-to-redshift github.com/Clever/s3-to-redshift/cmd
 
