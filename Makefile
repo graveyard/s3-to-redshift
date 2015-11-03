@@ -25,7 +25,6 @@ $(GOPATH)/bin/godocdown:
 	@go get github.com/robertkrimen/godocdown/godocdown
 
 $(PKGS): $(GOPATH)/bin/golint docs
-	@go get -d -t $@
 	@gofmt -w=true $(GOPATH)/src/$@*/**.go
 ifneq ($(NOLINT),1)
 	@echo "LINTING..."
