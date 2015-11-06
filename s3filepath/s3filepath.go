@@ -13,7 +13,8 @@ import (
 
 var (
 	// currently assumes no unix file created timestamp
-	s3Regex = regexp.MustCompile(".*_.*_(.*?)\\.(.*)")
+	s3Regex   = regexp.MustCompile(".*_.*_(.*?)\\.(.*)")
+	yamlRegex = regexp.MustCompile(".*\\.yml")
 )
 
 // Bucketer interface is useful for testing and showing that
@@ -124,6 +125,10 @@ func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time
 		}
 		if targetDate != nil && !targetDate.Equal(returnDate) {
 			log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, returnDate)
+			continue
+		}
+		if yamlRegex.MatchString(item.Key) {
+			log.Printf("ignoring yaml file: %s, we are looking for data files", item.Key)
 			continue
 		}
 		return returnDate, suffix, nil
