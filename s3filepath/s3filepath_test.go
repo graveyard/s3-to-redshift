@@ -49,8 +49,8 @@ func getTestFileWithResults(b, s, t, suf, r, aID, sk, confFile string, date time
 	return s3File
 }
 
-func getKeyFromDate(schema, table string, date time.Time) s3.Key {
-	return s3.Key{fmt.Sprintf("%s_%s_%s.json.gz", schema, table, date.Format(time.RFC3339)), "", 0, "", "", s3.Owner{}}
+func getKeyFromDate(schema, table, suffix string, date time.Time) s3.Key {
+	return s3.Key{fmt.Sprintf("%s_%s_%s.%s", schema, table, date.Format(time.RFC3339), suffix), "", 0, "", "", s3.Owner{}}
 }
 
 func TestFindLatestInputData(t *testing.T) {
@@ -80,10 +80,10 @@ func TestFindLatestInputData(t *testing.T) {
 	// test set date
 	res = s3.ListResp{}
 	keys = []s3.Key{
-		getKeyFromDate(schema, table, date1),
-		getKeyFromDate(schema, table, date2),
-		getKeyFromDate(schema, table, expectedDate),
-		getKeyFromDate(schema, table, date3),
+		getKeyFromDate(schema, table, suffix, date1),
+		getKeyFromDate(schema, table, suffix, date2),
+		getKeyFromDate(schema, table, suffix, expectedDate),
+		getKeyFromDate(schema, table, suffix, date3),
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", expectedDate, &res)
@@ -95,9 +95,9 @@ func TestFindLatestInputData(t *testing.T) {
 	// test no match
 	res = s3.ListResp{}
 	keys = []s3.Key{
-		getKeyFromDate(schema, table, date1),
-		getKeyFromDate(schema, table, date2),
-		getKeyFromDate(schema, table, date3),
+		getKeyFromDate(schema, table, suffix, date1),
+		getKeyFromDate(schema, table, suffix, date2),
+		getKeyFromDate(schema, table, suffix, date3),
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", expectedDate, &res)
@@ -110,9 +110,9 @@ func TestFindLatestInputData(t *testing.T) {
 	res = s3.ListResp{}
 	// shuffle the keys to test sorting by date
 	keys = []s3.Key{
-		getKeyFromDate(schema, table, date2),
-		getKeyFromDate(schema, table, date3),
-		getKeyFromDate(schema, table, date1),
+		getKeyFromDate(schema, table, suffix, date2),
+		getKeyFromDate(schema, table, suffix, date3),
+		getKeyFromDate(schema, table, suffix, date1),
 	}
 	res.Contents = keys
 	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", date3, &res)
@@ -121,6 +121,23 @@ func TestFindLatestInputData(t *testing.T) {
 		assert.Equal(t, date3, returnedDate)
 		assert.Equal(t, suffix, returnedSuffix)
 	}
+
+	// test avoid yml files when looking for most recent data
+	res = s3.ListResp{}
+	// shuffle the keys to test sorting by date
+	keys = []s3.Key{
+		getKeyFromDate(schema, table, suffix, date2),
+		getKeyFromDate(schema, table, "yml", date3),
+		getKeyFromDate(schema, table, "yml", date1),
+	}
+	res.Contents = keys
+	expFile = getTestFileWithResults(bucket, schema, table, suffix, region, accessID, secretKey, "bar.yml", date2, &res)
+	returnedDate, returnedSuffix, err = FindLatestInputData(expFile.Bucket, expFile.Schema, expFile.Table, nil)
+	if assert.NoError(t, err) {
+		assert.Equal(t, date2, returnedDate)
+		assert.Equal(t, suffix, returnedSuffix)
+	}
+
 }
 
 func TestCreateS3File(t *testing.T) {

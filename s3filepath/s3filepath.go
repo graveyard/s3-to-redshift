@@ -13,7 +13,8 @@ import (
 
 var (
 	// currently assumes no unix file created timestamp
-	s3Regex = regexp.MustCompile(".*_.*_(.*?)\\.(.*)")
+	s3Regex   = regexp.MustCompile(".*_.*_(.*?)\\.(.*)")
+	yamlRegex = regexp.MustCompile(".*\\.yml")
 )
 
 // Bucketer interface is useful for testing and showing that
@@ -120,13 +121,17 @@ func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time
 		// ignore malformed s3 files
 		if errDate != nil || errZip != nil {
 			log.Printf("ignoring file: %s, errs are: %s, %s", item.Key, errDate, errZip)
-		} else {
-			if targetDate != nil && !targetDate.Equal(returnDate) {
-				log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, returnDate)
-			} else {
-				return returnDate, suffix, nil
-			}
+			continue
 		}
+		if targetDate != nil && !targetDate.Equal(returnDate) {
+			log.Printf("date set to %s, ignoring non-matching file: %s with date: %s", *targetDate, item.Key, returnDate)
+			continue
+		}
+		if yamlRegex.MatchString(item.Key) {
+			log.Printf("ignoring yaml file: %s, we are looking for data files", item.Key)
+			continue
+		}
+		return returnDate, suffix, nil
 	}
 	notFoundErr := fmt.Errorf("%d files found, but none found with search path: 's3://%s/%s' and date (if set) %s Most recent: %s",
 		len(items), bucket.Name(), search, targetDate, items[0].Key)
