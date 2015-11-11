@@ -19,6 +19,10 @@ We are trying to minimize the amount of work to add or modify data going into `R
 - Modifying the destination `Redshift` tables
 - Loading in the data efficiently using the `COPY` command
 
+## Deploying
+
+This is a standard mesos deploy, `fab mesos.apps.deploy:s3-to-redshift,env=production`
+
 ## Running
 
 We split up environment variables and command line flags based on realistic ways one might run this in production.
