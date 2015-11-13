@@ -113,7 +113,6 @@ func TestGetTableMetadata(t *testing.T) {
 	expectedTable := Table{
 		Name: table,
 		Columns: []ColInfo{{
-			Ordinal:     1,
 			Name:        "foo",
 			Type:        "integer",
 			DefaultVal:  "5",
@@ -127,7 +126,6 @@ func TestGetTableMetadata(t *testing.T) {
 			DataDateColumn: dataDateCol,
 		},
 	}
-	//colVals := []interface{}{1, "foo", "int", 5, false, false, false, 0}
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -148,11 +146,11 @@ func TestGetTableMetadata(t *testing.T) {
 	mock.ExpectQuery(existRegex).WithArgs().WillReturnRows(existRows)
 	// column info
 	// don't look for the whole query, just the important bits
-	colInfoRegex := fmt.Sprintf(`SELECT f.attnum .*nspname = '%s' .*relname = '%s'.*`, schema, table)
-	colInfoRows := sqlmock.NewRows([]string{"ordinal", "name", "col_type", "default_val",
+	colInfoRegex := fmt.Sprintf(`SELECT .*nspname = '%s' .*relname = '%s'.*`, schema, table)
+	colInfoRows := sqlmock.NewRows([]string{"name", "col_type", "default_val",
 		"not_null", "primary_key", "dist_key", "sort_ord"})
 	// matches expectedTable above, used for returning from sql mock
-	colInfoRows.AddRow(1, "foo", "integer", 5, false, false, false, 0)
+	colInfoRows.AddRow("foo", "integer", 5, false, false, false, 0)
 	mock.ExpectQuery(colInfoRegex).WithArgs().WillReturnRows(colInfoRows)
 	// last data
 	dateRegex := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`, dataDateCol, schema, table, dataDateCol)
@@ -205,8 +203,8 @@ func TestCreateTable(t *testing.T) {
 		Name: table,
 		// order incorrectly on purpose to ensure ordering works
 		Columns: []ColInfo{
-			{2, "test1", "int", "100", true, false, true, 1},
-			{1, "id", "text", "", false, true, false, 0},
+			{"test1", "int", "100", true, false, true, 1},
+			{"id", "text", "", false, true, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -241,10 +239,10 @@ func TestUpdateTable(t *testing.T) {
 		Name: table,
 		// order incorrectly on purpose to ensure ordering works
 		Columns: []ColInfo{
-			{3, "test3", "boolean", "true", false, false, false, 0},
-			{2, "test2", "integer", "100", true, false, true, 1},
-			{1, "id", "character varying(256)", "", false, true, false, 0},
-			{4, "test4", "double precision", "false", false, false, false, 0},
+			{"test3", "boolean", "true", false, false, false, 0},
+			{"test2", "integer", "100", true, false, true, 1},
+			{"id", "character varying(256)", "", false, true, false, 0},
+			{"test4", "double precision", "false", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -253,10 +251,10 @@ func TestUpdateTable(t *testing.T) {
 		Name: table,
 		// order incorrectly on purpose to ensure ordering works
 		Columns: []ColInfo{
-			{3, "test3", "boolean", "true", false, false, false, 0},
-			{2, "test2", "int", "100", true, false, true, 1},
-			{1, "id", "text", "", false, true, false, 0},
-			{4, "test4", "float", "false", false, false, false, 0},
+			{"test3", "boolean", "true", false, false, false, 0},
+			{"test2", "int", "100", true, false, true, 1},
+			{"id", "text", "", false, true, false, 0},
+			{"test4", "float", "false", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -298,7 +296,7 @@ func TestUpdateTable(t *testing.T) {
 	fewerColumnsTargetTable := Table{
 		Name: table,
 		Columns: []ColInfo{
-			{3, "test3", "boolean", "true", false, false, false, 0},
+			{"test3", "boolean", "true", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -312,7 +310,7 @@ func TestUpdateTable(t *testing.T) {
 		Name: table,
 		// order incorrectly on purpose to ensure ordering works
 		Columns: []ColInfo{
-			{1, "id", "text", "", false, true, false, 0},
+			{"id", "text", "", false, true, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -331,13 +329,12 @@ func TestUpdateTable(t *testing.T) {
 	// test mismatching columns (does error)
 	// each one is one item off from: {1, "id", "text", "", false, true, false, 0},
 	for _, c := range []ColInfo{
-		{2, "id", "text", "", false, true, false, 0},
-		{1, "id", "boolean", "", false, true, false, 0},
-		{1, "id", "text", "foo", false, true, false, 0},
-		{1, "id", "text", "", true, true, false, 0},
-		{1, "id", "text", "", false, false, false, 0},
-		{1, "id", "text", "", false, true, true, 0},
-		{1, "id", "text", "", false, true, false, 1},
+		{"id", "boolean", "", false, true, false, 0},
+		{"id", "text", "foo", false, true, false, 0},
+		{"id", "text", "", true, true, false, 0},
+		{"id", "text", "", false, false, false, 0},
+		{"id", "text", "", false, true, true, 0},
+		{"id", "text", "", false, true, false, 1},
 	} {
 		mismatchingColInputTable := Table{
 			Name:    table,

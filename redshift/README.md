@@ -9,7 +9,6 @@
 
 ```go
 type ColInfo struct {
-	Ordinal     int    `yaml:"ordinal"`
 	Name        string `yaml:"dest"`
 	Type        string `yaml:"type"`
 	DefaultVal  string `yaml:"defaultval"`

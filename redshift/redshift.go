@@ -49,7 +49,6 @@ type Meta struct {
 // ColInfo is a struct that contains information about a column in a Redshift database.
 // SortOrdinal and DistKey only make sense for Redshift
 type ColInfo struct {
-	Ordinal     int    `yaml:"ordinal"`
 	Name        string `yaml:"dest"`
 	Type        string `yaml:"type"`
 	DefaultVal  string `yaml:"defaultval"`
@@ -58,13 +57,6 @@ type ColInfo struct {
 	DistKey     bool   `yaml:"distkey"`
 	SortOrdinal int    `yaml:"sortord"`
 }
-
-// A helper to make sure the CSV copy works properly
-type sortableColumns []ColInfo
-
-func (c sortableColumns) Len() int           { return len(c) }
-func (c sortableColumns) Less(i, j int) bool { return c[i].Ordinal < c[j].Ordinal }
-func (c sortableColumns) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
 const (
 	// TODO: use parameter placeholder syntax instead
@@ -75,7 +67,6 @@ const (
 	// name, type, default_val, not_null, primary_key, dist_key, and sort_ordinal
 	// need to pass a schema and table name as the parameters
 	schemaQueryFormat = `SELECT
-  f.attnum AS ordinal,
   f.attname AS name,
   pg_catalog.format_type(f.atttypid,f.atttypmod) AS col_type,
   CASE
@@ -182,7 +173,7 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Tab
 	defer rows.Close()
 	for rows.Next() {
 		var c ColInfo
-		if err := rows.Scan(&c.Ordinal, &c.Name, &c.Type, &c.DefaultVal, &c.NotNull,
+		if err := rows.Scan(&c.Name, &c.Type, &c.DefaultVal, &c.NotNull,
 			&c.PrimaryKey, &c.DistKey, &c.SortOrdinal,
 		); err != nil {
 			return nil, nil, fmt.Errorf("issue scanning column, err: %s", err)
@@ -273,9 +264,6 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 		for _, targetCol := range targetTable.Columns {
 			if inCol.Name == targetCol.Name {
 				mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
-				if inCol.Ordinal != targetCol.Ordinal {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "Ordinal", inCol.Ordinal, targetCol.Ordinal)
-				}
 				if typeMapping[inCol.Type] != targetCol.Type {
 					return fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type)
 				}
