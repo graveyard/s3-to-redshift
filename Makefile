@@ -38,3 +38,15 @@ endif
 docs: $(addsuffix /README.md, $(SUBPKG_NAMES)) README.md
 %/README.md: %/*.go $(GOPATH)/bin/godocdown
 	@$(GOPATH)/bin/godocdown $(PKG)/$(shell dirname $@) > $@
+
+
+SHELL := /bin/bash
+PKGS := $(shell go list ./... | grep -v /vendor)
+GODEP := $(GOPATH)/bin/godep
+
+$(GODEP):
+	go get -u github.com/tools/godep
+
+vendor: $(GODEP)
+	$(GODEP) save $(PKGS)
+	find vendor/ -path '*/vendor' -type d | xargs -IX rm -r X # remove any nested vendor directories
