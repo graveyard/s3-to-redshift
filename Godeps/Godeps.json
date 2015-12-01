@@ -1,13 +1,25 @@
 {
-	"ImportPath": "github.com/Clever/s3-to-redshift",
+	"ImportPath": "github.com/Clever/redshifter",
 	"GoVersion": "go1.5.1",
 	"Packages": [
-		"./..."
+		"github.com/Clever/redshifter/cmd",
+		"github.com/Clever/redshifter/redshift",
+		"github.com/Clever/redshifter/s3filepath"
 	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Clever/pathio",
 			"Rev": "d62dca8075954017067662ff21cf9311361a6dca"
+		},
+		{
+			"ImportPath": "github.com/Clever/s3-to-redshift/redshift",
+			"Comment": "d6-2-g8d21820",
+			"Rev": "8d21820275e09a565f3a32b44f19eab32e2fc3a0"
+		},
+		{
+			"ImportPath": "github.com/Clever/s3-to-redshift/s3filepath",
+			"Comment": "d6-2-g8d21820",
+			"Rev": "8d21820275e09a565f3a32b44f19eab32e2fc3a0"
 		},
 		{
 			"ImportPath": "github.com/DATA-DOG/go-sqlmock",
