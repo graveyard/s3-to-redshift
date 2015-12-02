@@ -1,10 +1,8 @@
 SHELL := /bin/bash
-PKG := github.com/Clever/s3-to-redshift
-SUBPKG_NAMES := redshift s3filepath
-SUBPKGS = $(addprefix $(PKG)/, $(SUBPKG_NAMES))
-PKGS = $(PKG)/cmd/ $(SUBPKGS)
-
-.PHONY: build test golint docs $(PKG) $(PKGS)
+PKG := github.com/Clever/s3-to-redshift/cmd
+PKGS := $(shell go list ./... | grep -v /vendor)
+EXECUTABLE := s3-to-redshift
+.PHONY: build test golint docs $(PKG) $(PKGS) vendor
 
 GOVERSION := $(shell go version | grep 1.5)
 ifeq "$(GOVERSION)" ""
@@ -12,40 +10,29 @@ ifeq "$(GOVERSION)" ""
 endif
 export GO15VENDOREXPERIMENT=1
 
+GOLINT := $(GOPATH)/bin/golint
+$(GOLINT):
+	go get github.com/golang/lint/golint
+
+GODEP := $(GOPATH)/bin/godep
+$(GODEP):
+	go get -u github.com/tools/godep
 
 build: test
-	go build -o build/s3-to-redshift github.com/Clever/s3-to-redshift/cmd
+	go build -o bin/$(EXECUTABLE) $(PKG)
 
-test: docs $(PKGS)
+test: $(PKGS)
 
-$(GOPATH)/bin/golint:
-	@go get github.com/golang/lint/golint
-
-$(GOPATH)/bin/godocdown:
-	@go get github.com/robertkrimen/godocdown/godocdown
-
-$(PKGS): $(GOPATH)/bin/golint docs
+$(PKGS): $(GOPATH)/bin/golint
 	@gofmt -w=true $(GOPATH)/src/$@*/**.go
 ifneq ($(NOLINT),1)
 	@echo "LINTING..."
-	@$(GOPATH)/bin/golint $(GOPATH)/src/$@*/**.go
+	@$(GOLINT) $(GOPATH)/src/$@*/**.go
 	@echo ""
 endif
 	@echo "TESTING..."
 	@go test $@ -test.v
 	@echo ""
-
-docs: $(addsuffix /README.md, $(SUBPKG_NAMES)) README.md
-%/README.md: %/*.go $(GOPATH)/bin/godocdown
-	@$(GOPATH)/bin/godocdown $(PKG)/$(shell dirname $@) > $@
-
-
-SHELL := /bin/bash
-PKGS := $(shell go list ./... | grep -v /vendor)
-GODEP := $(GOPATH)/bin/godep
-
-$(GODEP):
-	go get -u github.com/tools/godep
 
 vendor: $(GODEP)
 	$(GODEP) save $(PKGS)
