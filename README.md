@@ -117,6 +117,6 @@ go run cmd/s3_to_redshift.go -schema=api_hits -tables=pages,sessions \
   -bucket=analytics -config=s3://analytics/api.yml -date=2015-07-01T00:00:00Z -force=true
 ```
 
-## Testing
+## Vendoring
 
-Tests for the repository can be run using `$ make test`
+Please view the [dev-handbook for instructions](https://github.com/Clever/dev-handbook/blob/master/golang/godep.md).
