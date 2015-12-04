@@ -1,7 +1,7 @@
 FROM debian:jessie
 
 RUN apt-get update -y && \
-    apt-get install -y ca-certificates
+    apt-get install -y ca-certificates && \
     apt-get update -y && \
     apt-get install -y curl
 
