@@ -1,5 +1,7 @@
 # s3-to-redshift
 
+[![GoDoc](https://godoc.org/github.com/Clever/s3-to-redshift?status.svg)](https://godoc.org/github.com/Clever/s3-to-redshift)
+
 `s3-to-redshift` is responsible for getting data from `s3` into AWS Redshift for data analysis.
 
 *Note*: this repository formerly was called `redshifter`, but has been modified to fit a slightly different design pattern.
