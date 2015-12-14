@@ -101,7 +101,8 @@ func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time
 	var suffix string
 	// when we list, we want all files that look like <schema>_<table> and we look at the dates
 	search := fmt.Sprintf("%s_%s", schema, table)
-	maxKeys := 10000 // perhaps configure, right now this seems like a fine default
+	// can never ask for > 1000: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
+	maxKeys := 1000
 	listRes, err := bucket.List(search, "", "", maxKeys)
 	if err != nil {
 		return returnDate, suffix, err

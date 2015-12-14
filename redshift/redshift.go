@@ -294,7 +294,7 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 		}
 	}
 	if len(columnOps) == 0 {
-		log.Println("no update necessary")
+		log.Println("no schema update necessary")
 		return nil
 	}
 
