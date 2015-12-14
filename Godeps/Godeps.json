@@ -1,25 +1,16 @@
 {
-	"ImportPath": "github.com/Clever/redshifter",
+	"ImportPath": "github.com/Clever/s3-to-redshift",
 	"GoVersion": "go1.5.1",
 	"Packages": [
-		"github.com/Clever/redshifter/cmd",
-		"github.com/Clever/redshifter/redshift",
-		"github.com/Clever/redshifter/s3filepath"
+		"github.com/Clever/s3-to-redshift/cmd",
+		"github.com/Clever/s3-to-redshift/redshift",
+		"github.com/Clever/s3-to-redshift/s3filepath"
 	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Clever/pathio",
-			"Rev": "d62dca8075954017067662ff21cf9311361a6dca"
-		},
-		{
-			"ImportPath": "github.com/Clever/s3-to-redshift/redshift",
-			"Comment": "d6-2-g8d21820",
-			"Rev": "8d21820275e09a565f3a32b44f19eab32e2fc3a0"
-		},
-		{
-			"ImportPath": "github.com/Clever/s3-to-redshift/s3filepath",
-			"Comment": "d6-2-g8d21820",
-			"Rev": "8d21820275e09a565f3a32b44f19eab32e2fc3a0"
+			"Comment": "v2.0.0",
+			"Rev": "95b3c747cf6cebec9e98d742f31131fe7c5778cd"
 		},
 		{
 			"ImportPath": "github.com/DATA-DOG/go-sqlmock",
@@ -27,9 +18,49 @@
 			"Rev": "081a694b0af16f86d406ac2832433a98a6fa625a"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/endpoints",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/query",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/rest",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/restxml",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/xml/xmlutil",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/signer/v4",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/s3",
+			"Comment": "v0.9.9-3-g7553d52",
+			"Rev": "7553d5227962c0f226768d0435881e99ec0cab35"
+		},
+		{
 			"ImportPath": "github.com/lib/pq",
-			"Comment": "go1.0-cutoff-13-g19eeca3",
-			"Rev": "19eeca3e30d2577b1761db471ec130810e67f532"
+			"Comment": "go1.0-cutoff-59-gb269bd0",
+			"Rev": "b269bd035a727d6c1081f76e7a239a1b00674c40"
 		},
 		{
 			"ImportPath": "github.com/mitchellh/goamz/aws",
@@ -46,7 +77,8 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Rev": "efa3c4c36479edac5af79cbcb4bc8cb525e09b13"
+			"Comment": "v1.0-42-gb8dc1ce",
+			"Rev": "b8dc1cecf15bdaf1988d9e87aa7cd98d899a06d6"
 		},
 		{
 			"ImportPath": "github.com/vaughan0/go-ini",
