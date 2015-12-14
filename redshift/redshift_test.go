@@ -10,13 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/mitchellh/goamz/s3"
-
 	"github.com/Clever/s3-to-redshift/s3filepath"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/mitchellh/goamz/s3"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 // helper for TestTableFromConf - marshals the table into a file

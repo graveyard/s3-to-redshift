@@ -12,6 +12,10 @@ export GO15VENDOREXPERIMENT=1
 
 all: test build
 
+FGT := $(GOPATH)/bin/fgt
+$(FGT):
+		go get github.com/GeertJohan/fgt
+
 GOLINT := $(GOPATH)/bin/golint
 $(GOLINT):
 	go get github.com/golang/lint/golint
@@ -25,11 +29,13 @@ build:
 
 test: $(PKGS)
 
-$(PKGS): $(GOPATH)/bin/golint
+$(PKGS): $(GOLINT) $(FGT)
 	@echo "FORMATTING"
-	@gofmt -l=true $(GOPATH)/src/$@*/*.go
+	@$(FGT) gofmt -l=true $(GOPATH)/src/$@/*.go
 	@echo "TESTING"
 	@go test -v $@
+	@echo "LINTING"
+	@$(FGT) $(GOLINT) $(GOPATH)/src/$@/*.go
 	@echo "VETTING"
 	@go vet -v $@
 
