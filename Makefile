@@ -10,6 +10,12 @@ ifeq "$(GOVERSION)" ""
 endif
 export GO15VENDOREXPERIMENT=1
 
+all: test build
+
+FGT := $(GOPATH)/bin/fgt
+$(FGT):
+		go get github.com/GeertJohan/fgt
+
 GOLINT := $(GOPATH)/bin/golint
 $(GOLINT):
 	go get github.com/golang/lint/golint
@@ -18,21 +24,20 @@ GODEP := $(GOPATH)/bin/godep
 $(GODEP):
 	go get -u github.com/tools/godep
 
-build: test
+build:
 	go build -o bin/$(EXECUTABLE) $(PKG)
 
 test: $(PKGS)
 
-$(PKGS): $(GOPATH)/bin/golint
-	@gofmt -w=true $(GOPATH)/src/$@*/**.go
-ifneq ($(NOLINT),1)
-	@echo "LINTING..."
-	@$(GOLINT) $(GOPATH)/src/$@*/**.go
-	@echo ""
-endif
-	@echo "TESTING..."
-	@go test $@ -test.v
-	@echo ""
+$(PKGS): $(GOLINT) $(FGT)
+	@echo "FORMATTING"
+	@$(FGT) gofmt -l=true $(GOPATH)/src/$@/*.go
+	@echo "TESTING"
+	@go test -v $@
+	@echo "LINTING"
+	@$(FGT) $(GOLINT) $(GOPATH)/src/$@/*.go
+	@echo "VETTING"
+	@go vet -v $@
 
 vendor: $(GODEP)
 	$(GODEP) save $(PKGS)

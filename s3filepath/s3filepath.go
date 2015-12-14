@@ -111,7 +111,7 @@ func FindLatestInputData(bucket Bucketer, schema, table string, targetDate *time
 		return returnDate, suffix, fmt.Errorf("no files found with search path: s3://%s/%s", bucket.Name(), search)
 	}
 	if len(items) >= maxKeys {
-		return returnDate, suffix, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %s", maxKeys)
+		return returnDate, suffix, fmt.Errorf("too many files returned, perhaps increase maxKeys, currently: %d", maxKeys)
 	}
 	sort.Sort(byTimeStampDesc(items)) // sort by ts desc
 

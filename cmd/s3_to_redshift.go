@@ -98,8 +98,9 @@ func main() {
 	// connect to s3
 	region, ok := aws.Regions[awsRegion]
 	if !ok {
-		fatalIfErr(fmt.Errorf("issue converting region: %s in to aws region"), "")
+		fatalIfErr(fmt.Errorf("issue converting region: '%s' in to aws region", awsRegion), "AWS Regions")
 	}
+
 	awsAuth, err := aws.EnvAuth()
 	fatalIfErr(err, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables must be set.")
 	s3Conn := s3.New(awsAuth, region)

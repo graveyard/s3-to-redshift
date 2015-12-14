@@ -50,7 +50,10 @@ func getTestFileWithResults(b, s, t, suf, r, aID, sk, confFile string, date time
 }
 
 func getKeyFromDate(schema, table, suffix string, date time.Time) s3.Key {
-	return s3.Key{fmt.Sprintf("%s_%s_%s.%s", schema, table, date.Format(time.RFC3339), suffix), "", 0, "", "", s3.Owner{}}
+	return s3.Key{
+		Key:   fmt.Sprintf("%s_%s_%s.%s", schema, table, date.Format(time.RFC3339), suffix),
+		Owner: s3.Owner{},
+	}
 }
 
 func TestFindLatestInputData(t *testing.T) {
