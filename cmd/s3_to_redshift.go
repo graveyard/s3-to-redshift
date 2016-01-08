@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
 	env "github.com/segmentio/go-env"
 
 	redshift "github.com/Clever/s3-to-redshift/redshift"
@@ -95,17 +93,8 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 func main() {
 	flag.Parse()
 
-	// connect to s3
-	region, ok := aws.Regions[awsRegion]
-	if !ok {
-		fatalIfErr(fmt.Errorf("issue converting region: '%s' in to aws region", awsRegion), "AWS Regions")
-	}
-
-	awsAuth, err := aws.EnvAuth()
-	fatalIfErr(err, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables must be set.")
-	s3Conn := s3.New(awsAuth, region)
 	// use an custom bucket type for testablitity
-	bucket := s3filepath.S3Bucket{*s3Conn.Bucket(*inputBucket), *inputBucket, region.Name, s3Conn.Auth.AccessKey, s3Conn.Auth.SecretKey}
+	bucket := s3filepath.S3Bucket{*inputBucket, awsRegion, awsAccessKeyID, awsSecretAccessKey}
 
 	timeout := 10 // can parameterize later if this is an issue
 	if host == "" {
@@ -121,20 +110,16 @@ func main() {
 	for _, t := range strings.Split(*inputTables, ",") {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
 		// override most recent data file
-		var overrideDate *time.Time
-		if *dataDate != "" {
-			parsedDate, err := time.Parse(time.RFC3339, *dataDate)
-			fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
-			log.Printf("setting target date to: %s", parsedDate)
-			overrideDate = &parsedDate
+		if *dataDate == "" {
+			panic("No date provided")
 		}
-		// find most recent s3 file
-		// each input will have a configuration associated with it, output by the previous worker
-		dataDate, suffix, err := s3filepath.FindLatestInputData(&bucket, *inputSchemaName, t, overrideDate)
+		parsedDate, err := time.Parse(time.RFC3339, *dataDate)
+		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
+		log.Printf("setting target date to: %s", parsedDate)
+		date := &parsedDate
 		fatalIfErr(err, "Issue getting latest schema and input data from s3")
-
-		inputConf := s3filepath.CreateS3File(&bucket, *inputSchemaName, t, suffix, *configFile, dataDate)
-
+		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, *date)
+		fatalIfErr(err, "Issue getting data file from s3")
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")
 

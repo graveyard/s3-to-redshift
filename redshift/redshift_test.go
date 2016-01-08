@@ -12,7 +12,6 @@ import (
 
 	"github.com/Clever/s3-to-redshift/s3filepath"
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/mitchellh/goamz/s3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -41,7 +40,7 @@ func TestTableFromConf(t *testing.T) {
 
 	schema, table := "testschema", "testtable"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{s3.Bucket{}, bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
 
 	matchingTable := Table{
 		Name:    table,
@@ -53,7 +52,7 @@ func TestTableFromConf(t *testing.T) {
 	}
 
 	f := s3filepath.S3File{
-		Bucket:    &b,
+		Bucket:    b,
 		Schema:    schema,
 		Table:     table,
 		JSONPaths: "auto",
@@ -358,9 +357,9 @@ func TestUpdateTable(t *testing.T) {
 func TestJSONCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{s3.Bucket{}, bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
 	s3File := s3filepath.S3File{
-		Bucket:    &b,
+		Bucket:    b,
 		Schema:    schema,
 		Table:     table,
 		JSONPaths: "auto",
