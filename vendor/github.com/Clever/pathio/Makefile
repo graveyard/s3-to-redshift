@@ -5,8 +5,18 @@ READMES = $(addsuffix /README.md, $(PKGS))
 
 .PHONY: test golint README
 
+GOVERSION := $(shell go version | grep 1.5)
+ifeq "$(GOVERSION)" ""
+  $(error must be running Go version 1.5)
+endif
+
+export GO15VENDOREXPERIMENT = 1
+
 golint:
 	@go get github.com/golang/lint/golint
+
+bin: $(PKGS)
+	@go build -o p3 cmd/p3.go
 
 test: $(PKGS)
 docs: $(READMES)
