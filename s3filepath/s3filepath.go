@@ -46,7 +46,8 @@ type S3PathChecker struct{}
 
 // FileExists looks up if the file exists in S3 using the pathio.Reader method.
 func (S3PathChecker) FileExists(path string) bool {
-	_, err := pathio.Reader(path)
+	reader, err := pathio.Reader(path)
+	defer reader.Close()
 	return err == nil
 }
 

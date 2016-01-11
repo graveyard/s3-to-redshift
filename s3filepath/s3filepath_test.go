@@ -43,7 +43,7 @@ func TestCreateS3File(t *testing.T) {
 	expConf := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml",
 		bucket, schema, table, expectedDate.Format(time.RFC3339))
 
-	// test completely non-existant file
+	// test completely non-existent file
 	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json.gz", expectedDate)
 	returnedFile, err := CreateS3File(MockPathChecker{}, expFile.Bucket, schema, "bad_table", "", expectedDate)
 	assert.Equal(t, errors.New("S3 file not found at: bucket: b schema: s, table: bad_table date: 2015-11-10T23:00:00Z"), err)

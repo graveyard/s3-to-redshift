@@ -115,10 +115,7 @@ func main() {
 		}
 		parsedDate, err := time.Parse(time.RFC3339, *dataDate)
 		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
-		log.Printf("setting target date to: %s", parsedDate)
-		date := &parsedDate
-		fatalIfErr(err, "Issue getting latest schema and input data from s3")
-		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, *date)
+		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedDate)
 		fatalIfErr(err, "Issue getting data file from s3")
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")
