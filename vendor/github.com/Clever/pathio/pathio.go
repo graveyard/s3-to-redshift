@@ -4,10 +4,9 @@ It supports two types of paths:
  1. Local file paths
  2. S3 File Paths (s3://bucket/key)
 
-Note that using s3 paths requires setting three environment variables
+Note that using s3 paths requires setting two environment variables
  1. AWS_SECRET_ACCESS_KEY
  2. AWS_ACCESS_KEY_ID
- 3. AWS_REGION
 */
 package pathio
 
@@ -15,92 +14,120 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+const defaultLocation = "us-east-1"
+const aesAlgo = "AES256"
+
+// Client is the pathio client used to access the local file system and S3. It
+// includes an option to disable S3 encryption. To disable S3 encryption, create
+// a new Client and call it directly:
+// `&Client{disableS3Encryption: true}.Write(...)`
+type Client struct {
+	disableS3Encryption bool
+}
+
+// DefaultClient is the default pathio client called by the Reader, Writer, and
+// WriteReader methods. It has S3 encryption enabled.
+var DefaultClient = &Client{}
+
+// Reader Calls DefaultClient's Reader method.
+func Reader(path string) (rc io.ReadCloser, err error) {
+	return DefaultClient.Reader(path)
+}
+
+// Write Calls DefaultClient's Write method.
+func Write(path string, input []byte) error {
+	return DefaultClient.Write(path, input)
+}
+
+// WriteReader Calls DefaultClient's WriteReader method.
+func WriteReader(path string, input io.ReadSeeker) error {
+	return DefaultClient.WriteReader(path, input)
+}
+
+type s3Connection struct {
+	handler s3Handler
+	bucket  string
+	key     string
+}
+
 // Reader returns an io.Reader for the specified path. The path can either be a local file path
-// or an S3 path.
-func Reader(path string) (io.Reader, error) {
+// or an S3 path. It is the caller's responsibility to close rc.
+func (c *Client) Reader(path string) (rc io.ReadCloser, err error) {
 	if strings.HasPrefix(path, "s3://") {
-		return s3FileReader(path)
+		s3Conn, err := s3ConnectionInformation(path)
+		if err != nil {
+			return nil, err
+		}
+		return s3FileReader(s3Conn)
 	}
 	// Local file path
 	return os.Open(path)
 }
 
-// Write writes a byte array to the specified path. The path can be either a local file path of an
+// Write writes a byte array to the specified path. The path can be either a local file path or an
 // S3 path.
-func Write(path string, input []byte) error {
-	return WriteReader(path, bytes.NewReader(input), int64(len(input)))
+func (c *Client) Write(path string, input []byte) error {
+	return c.WriteReader(path, bytes.NewReader(input))
 }
 
 // WriteReader writes all the data read from the specified io.Reader to the
 // output path. The path can either a local file path or an S3 path.
-func WriteReader(path string, input io.Reader, length int64) error {
+func (c *Client) WriteReader(path string, input io.ReadSeeker) error {
 	if strings.HasPrefix(path, "s3://") {
-		return writeToS3(path, input, length)
+		s3Conn, err := s3ConnectionInformation(path)
+		if err != nil {
+			return err
+		}
+		return writeToS3(s3Conn, input, c.disableS3Encryption)
 	}
 	return writeToLocalFile(path, input)
-
 }
 
-// s3FileReader converts an S3Path into an io.Reader
-func s3FileReader(path string) (io.Reader, error) {
-	bucket, key, err := getS3BucketAndKey(path)
+// s3FileReader converts an S3Path into an io.ReadCloser
+func s3FileReader(s3Conn s3Connection) (io.ReadCloser, error) {
+	params := s3.GetObjectInput{
+		Bucket: aws.String(s3Conn.bucket),
+		Key:    aws.String(s3Conn.key),
+	}
+	resp, err := s3Conn.handler.GetObject(&params)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Getting from s3: %s", key)
-	return bucket.GetReader(key)
+	return resp.Body, nil
 }
 
-func writeToLocalFile(path string, input io.Reader) error {
+// writeToS3 uploads the given file to S3
+func writeToS3(s3Conn s3Connection, input io.ReadSeeker, disableEncryption bool) error {
+	params := s3.PutObjectInput{
+		Bucket: aws.String(s3Conn.bucket),
+		Key:    aws.String(s3Conn.key),
+		Body:   input,
+	}
+	if !disableEncryption {
+		algo := aesAlgo
+		params.ServerSideEncryption = &algo
+	}
+	_, err := s3Conn.handler.PutObject(&params)
+	return err
+}
+
+// writeToLocalFile writes the given file locally
+func writeToLocalFile(path string, input io.ReadSeeker) error {
 	file, err := os.Create(path)
+	defer file.Close()
 	if err != nil {
 		return err
 	}
 	_, err = io.Copy(file, input)
 	return err
-
-}
-
-func writeToS3(path string, input io.Reader, length int64) error {
-	bucket, key, err := getS3BucketAndKey(path)
-	if err != nil {
-		return err
-	}
-	log.Printf("Writing to s3: %s", key)
-	return bucket.PutReader(key, input, length, "text/plain", s3.Private)
-}
-
-// getS3BucketAndKey takes in a full s3path (s3://bucket/key) and returns a bucket,
-// key, error tuple. It assumes that AWS environment variables are set.
-func getS3BucketAndKey(path string) (*s3.Bucket, string, error) {
-	auth, err := aws.EnvAuth()
-	if err != nil {
-		log.Print("AWS environment variables not set")
-		return nil, "", err
-	}
-
-	region, err := region(os.Getenv("AWS_REGION"))
-	// This is a HACK, but the S3 library we use doesn't support redirections from Amazon, so when
-	// we make a request to https://s3-us-west-1.amazonaws.com and Amazon returns a 301 redirecting
-	// to https://s3.amazonaws.com the library blows up.
-	region.S3Endpoint = "https://s3.amazonaws.com"
-	if err != nil {
-		return nil, "", err
-	}
-	s := s3.New(auth, region)
-	bucketName, key, err := parseS3Path(path)
-	if err != nil {
-		return nil, "", err
-	}
-	return s.Bucket(bucketName), key, err
 }
 
 // parseS3path parses an S3 path (s3://bucket/key) and returns a bucket, key, error tuple
@@ -116,12 +143,66 @@ func parseS3Path(path string) (string, string, error) {
 	return bucketName, key, nil
 }
 
-// getRegion converts a region name into an aws.Region object
-func region(regionString string) (aws.Region, error) {
-	for name, region := range aws.Regions {
-		if strings.ToLower(name) == strings.ToLower(regionString) {
-			return region, nil
-		}
+// s3ConnectionInformation parses the s3 path and returns the s3 connection from the
+// correct region, as well as the bucket, and key
+func s3ConnectionInformation(path string) (s3Connection, error) {
+	bucket, key, err := parseS3Path(path)
+	if err != nil {
+		return s3Connection{}, err
 	}
-	return aws.Region{}, fmt.Errorf("Unknown region %s: ", regionString)
+
+	// Look up region in S3
+	region, err := getRegionForBucket(newS3Handler(defaultLocation), bucket)
+	if err != nil {
+		return s3Connection{}, err
+	}
+
+	return s3Connection{newS3Handler(region), bucket, key}, nil
+}
+
+// getRegionForBucket looks up the region name for the given bucket
+func getRegionForBucket(svc s3Handler, name string) (string, error) {
+	// Any region will work for the region lookup, but the request MUST use
+	// PathStyle
+	params := s3.GetBucketLocationInput{
+		Bucket: aws.String(name),
+	}
+	resp, err := svc.GetBucketLocation(&params)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get location for bucket '%s', %s", name, err)
+	}
+	if resp.LocationConstraint == nil {
+		// "US Standard", returns an empty region, which means us-east-1
+		// See http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
+		return defaultLocation, nil
+	}
+	return *resp.LocationConstraint, nil
+}
+
+type s3Handler interface {
+	GetBucketLocation(input *s3.GetBucketLocationInput) (*s3.GetBucketLocationOutput, error)
+	GetObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, error)
+	PutObject(input *s3.PutObjectInput) (*s3.PutObjectOutput, error)
+}
+
+type liveS3Handler struct {
+	liveS3 *s3.S3
+}
+
+func (m *liveS3Handler) GetBucketLocation(input *s3.GetBucketLocationInput) (*s3.GetBucketLocationOutput, error) {
+	return m.liveS3.GetBucketLocation(input)
+}
+
+func (m *liveS3Handler) GetObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+	return m.liveS3.GetObject(input)
+}
+
+func (m *liveS3Handler) PutObject(input *s3.PutObjectInput) (*s3.PutObjectOutput, error) {
+	return m.liveS3.PutObject(input)
+}
+
+func newS3Handler(region string) *liveS3Handler {
+	config := aws.NewConfig().WithRegion(region).WithS3ForcePathStyle(true)
+	session := session.New()
+	return &liveS3Handler{s3.New(session, config)}
 }

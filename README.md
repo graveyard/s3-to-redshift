@@ -46,6 +46,7 @@ go run cmd/s3_to_redshift.go \
 -schema=<target_schema> \
 -tables=<target_tables> \
 -bucket=<s3_bucket_to_pull_from> \
+-date=<target_date> \
 ```
 
 All environment variables are required.
@@ -57,7 +58,7 @@ The `schema`, `tables`, and `bucket` flags also are critical.
 - `bucket`: `s3` bucket to pull from
 - `truncate`: clear the table before inserting
 - `force`: refresh the data even if the data date is after the current `s3` input date
-- `date`: override to look for a specific date instead of the most recent item
+- `date`:  the date string for the data in question
 - `config`: override of the usual auto-discovery of the config
 
 #### Note on general usage:
@@ -65,20 +66,16 @@ The `schema`, `tables`, and `bucket` flags also are critical.
 This worker is intended to have a good amount of power and intelligence, instead of being a simple connector.
 Thus, it looks for the right data automatically, and compares against what's in `Redshift` already.
 
-After `s3-to-redshift` has determined the correct date to process by looking at `s3`, the worker inspects the target `Redshift` table.
+After `s3-to-redshift` has determined the s3 file exists, the worker inspects the target `Redshift` table.
 - If there is not data in the table, no checks are needed and the process continues.
 - If there is already data in the table, `s3-to-redshift` finds the column that corresponds to the date of that data and compares with the date of the latest data in `Redshift`.
 
 Note that this "data date" is not necessarily the date the data itself was written to disk - it is not modified time, but instead the actual time the data was collected at its source.
 
 #### Using `--date`
-In normal operation, the worker finds the latest data in `s3` and loads it into `Redshift`.
-We look for the most recent file in `s3` by date included in filename timestamp, not modified or created time.
-We also can choose the date to process, for instance if:
-- Our worker has failed for a few days and we need to fill up the missing data
-- Our upstream process did not write the correct data to `s3` and we need to specify a specific time to rerun
+The date parameter is required, and should match the date in the file name of the data file to transform.
 
-In this case, you pass the specific, full RFC3999 date, such as: `--date=2015-07-01T00:00:00Z`
+This parameter should be the specific, full RFC3999 date, such as: `--date=2015-07-01T00:00:00Z`
 
 #### Using `--force`
 When the data already in the database is newer by "data date" than the data in `s3`, we do not overwrite it or insert it.
@@ -88,13 +85,13 @@ However, if you do need to overwrite, passing the `--force` flag will skip this 
 The `--force` flag may be useful when:
 - Business logic has changed and data needs to be overwritten
 - An upstream process has written incorrect data which needs to be reinserted into `Redshift`
-- Upstream processes write data out-of-order by design, and each run of `s3-to-redshift` is invoked with the `force` and `date` parameters
+- Upstream processes write data out-of-order by design, and each run of `s3-to-redshift` is invoked with the `force` parameter
 
 #### Using `--config`
 In normal operation, the worker looks for a config file for each schema/table combination.
 This takes the form: `config_<data filename without suffix>.yml`
 
-Note that if the `--date` parameter was specified, the worker looks for a config file with that date as the data timestamp.
+The worker looks for a config file with that date as the data timestamp.
 
 Your upstream producer might not want to write a config file for each set of data, or perhaps you have a central configuration location.
 In this case, you can use the `--config` parameter to pass a specific config file.
