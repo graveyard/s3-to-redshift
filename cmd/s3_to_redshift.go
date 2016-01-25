@@ -82,6 +82,9 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("err committing transaction: %s", err)
 	}
+	if err = db.Close(); err != nil {
+		return fmt.Errorf("issue closing db connection after tx commit")
+	}
 	return nil
 }
 
