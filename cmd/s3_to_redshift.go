@@ -96,7 +96,7 @@ func main() {
 	// use an custom bucket type for testablitity
 	bucket := s3filepath.S3Bucket{*inputBucket, awsRegion, awsAccessKeyID, awsSecretAccessKey}
 
-	timeout := 10 // can parameterize later if this is an issue
+	timeout := 60 // can parameterize later if this is an issue
 	if host == "" {
 		host = "localhost"
 	}
