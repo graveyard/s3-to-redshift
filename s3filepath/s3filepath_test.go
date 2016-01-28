@@ -26,43 +26,53 @@ func getTestFileWithResults(b, s, t, r, aID, sk, confFile, suf string, date time
 	return s3File
 }
 
-type MockPathChecker struct{}
-
-func (MockPathChecker) FileExists(path string) bool {
-	return path == "s3://b/s_t_2015-11-10T23:00:00Z.json.gz"
+type MockPathChecker struct {
+	ExistingPaths map[string]bool
 }
 
-type MockJSONPathChecker struct{}
-
-func (MockJSONPathChecker) FileExists(path string) bool {
-	return path == "s3://b/s_t_2015-11-10T23:00:00Z.json"
+// use a mock path checker that has all the paths to make sure that
+func (mp MockPathChecker) FileExists(path string) bool {
+	return mp.ExistingPaths[path]
 }
 
 func TestCreateS3File(t *testing.T) {
 	bucket, schema, table, region, accessID, secretKey := "b", "s", "t", "r", "aID", "sk"
 	expConf := fmt.Sprintf("s3://%s/config_%s_%s_%s.yml",
 		bucket, schema, table, expectedDate.Format(time.RFC3339))
+	jsonPath := "s3://b/s_t_2015-11-10T23:00:00Z.json"
+	jsonGzipPath := "s3://b/s_t_2015-11-10T23:00:00Z.json.gz"
 
 	// test completely non-existent file
 	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json.gz", expectedDate)
 	returnedFile, err := CreateS3File(MockPathChecker{}, expFile.Bucket, schema, "bad_table", "", expectedDate)
 	assert.Equal(t, errors.New("S3 file not found at: bucket: b schema: s, table: bad_table date: 2015-11-10T23:00:00Z"), err)
 
-	// test generated conf file
+	// test generated json gzip conf file
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json.gz", expectedDate)
-	returnedFile, err = CreateS3File(MockPathChecker{}, expFile.Bucket, schema, table, "", expectedDate)
+	testFiles := map[string]bool{
+		jsonGzipPath: true,
+		jsonPath:     true,
+	}
+	returnedFile, err = CreateS3File(MockPathChecker{testFiles}, expFile.Bucket, schema, table, "", expectedDate)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, expFile, *returnedFile)
 
 	// test generated conf file that isn't zipped
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json", expectedDate)
-	returnedFile, err = CreateS3File(MockJSONPathChecker{}, expFile.Bucket, schema, table, "", expectedDate)
+	testFiles = map[string]bool{
+		jsonPath: true,
+	}
+	returnedFile, err = CreateS3File(MockPathChecker{testFiles}, expFile.Bucket, schema, table, "", expectedDate)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, expFile, *returnedFile)
 
 	// test supplied conf file
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, "foo", "json.gz", expectedDate)
-	returnedFile, err = CreateS3File(MockPathChecker{}, expFile.Bucket, schema, table, "foo", expectedDate)
+	testFiles = map[string]bool{
+		jsonGzipPath: true,
+		jsonPath:     true,
+	}
+	returnedFile, err = CreateS3File(MockPathChecker{testFiles}, expFile.Bucket, schema, table, "foo", expectedDate)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, expFile, *returnedFile)
 }
