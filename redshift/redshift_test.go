@@ -414,6 +414,43 @@ func TestJSONCopy(t *testing.T) {
 	}
 }
 
+func TestManifestCopy(t *testing.T) {
+	schema, table := "testschema", "tablename"
+	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	s3File := s3filepath.S3File{
+		Bucket:    b,
+		Schema:    schema,
+		Table:     table,
+		JSONPaths: "auto",
+		Suffix:    "manifest",
+		DataDate:  time.Now(),
+		ConfFile:  "",
+	}
+	// test with creds and GZIP
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
+		"GZIP", "auto", region, accessID, secretKey)
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db}
+
+	mock.ExpectBegin()
+	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.JSONCopy(tx, s3File, true, true))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	schema, table := "test_schema", "test_table"
 	db, mock, err := sqlmock.New()
