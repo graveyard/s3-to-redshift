@@ -69,15 +69,22 @@ func CreateS3File(pc PathChecker, bucket S3Bucket, schema, table, suppliedConf s
 		confFile = suppliedConf
 	}
 
-	// Try to find gzipped file - if that doesn't exist, look for plain json
-	inputObj := S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
-	if !pc.FileExists(inputObj.GetDataFilename()) {
-		inputObj = S3File{bucket, schema, table, "auto", "json", date, confFile}
-		if !pc.FileExists(inputObj.GetDataFilename()) {
-			err := fmt.Errorf("S3 file not found at: bucket: %s schema: %s, table: %s date: %s",
-				bucket.Name, schema, table, formattedDate)
-			return nil, err
-		}
+	// Try to find manifest or data files in the order of:
+	// 1) manifest file
+	// 2) gzipped json file
+	// 3) json file
+	inputFile := S3File{bucket, schema, table, "auto", "manifest", date, confFile}
+	if pc.FileExists(inputFile.GetDataFilename()) {
+		return &inputFile, nil
 	}
-	return &inputObj, nil
+	inputFile = S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
+	if pc.FileExists(inputFile.GetDataFilename()) {
+		return &inputFile, nil
+	}
+	inputFile = S3File{bucket, schema, table, "auto", "json", date, confFile}
+	if pc.FileExists(inputFile.GetDataFilename()) {
+		return &inputFile, nil
+	}
+	return nil, fmt.Errorf("S3 file not found at: bucket: %s schema: %s, table: %s date: %s",
+		bucket.Name, schema, table, formattedDate)
 }

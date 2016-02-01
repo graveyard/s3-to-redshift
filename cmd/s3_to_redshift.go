@@ -25,6 +25,7 @@ var (
 	force           = flag.Bool("force", false, "do we refresh the data even if it's already handled?")
 	dataDate        = flag.String("date", "", "data date we should process, must be full RFC3339")
 	configFile      = flag.String("config", "", "schema & table config to use in YAML format")
+	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host               = os.Getenv("REDSHIFT_HOST")
@@ -43,9 +44,9 @@ func fatalIfErr(err error, msg string) {
 	}
 }
 
-// in a transaction, truncate, create or update, and then copy from the s3 JSON file
+// in a transaction, truncate, create or update, and then copy from the s3 JSON file or manifest
 // yell loudly if there is anything different in the target table compared to config (different distkey, etc)
-func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate bool) error {
+func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -69,12 +70,6 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	}
 
 	// COPY direct into it, ok to do since we're in a transaction
-	// assuming that we always want to copy from s3 and have gzip, so last 2 params are true
-	// if we want to change that, we should figure this out from the filename
-	gzip := false
-	if strings.Contains(inputConf.Suffix, "gz") {
-		gzip = true
-	}
 	if err = db.JSONCopy(tx, inputConf, true, gzip); err != nil {
 		return fmt.Errorf("err running JSON copy: %s", err)
 	}
@@ -135,7 +130,7 @@ func main() {
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}

@@ -315,6 +315,7 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 }
 
 // JSONCopy copies JSON data present in an S3 file into a redshift table.
+// It also supports JSON data pointed at by a manifest file, if you pass in a manifest file.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
 // if not using jsonPaths, set s3File.JSONPaths to "auto"
 func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
@@ -328,7 +329,11 @@ func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) e
 	if gzip {
 		gzipSQL = "GZIP"
 	}
-	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region, credSQL)
+	manifestSQL := ""
+	if f.Suffix == "manifest" {
+		manifestSQL = "manifest"
+	}
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON %s %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region, manifestSQL, credSQL)
 	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
 	// can't use prepare b/c of redshift-specific syntax that postgres does not like
