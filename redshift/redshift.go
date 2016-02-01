@@ -315,6 +315,7 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 }
 
 // JSONCopy copies JSON data present in an S3 file into a redshift table.
+// It also supports JSON data pointed at by a manifest file, if you pass in a manifest file.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
 // if not using jsonPaths, set s3File.JSONPaths to "auto"
 func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
