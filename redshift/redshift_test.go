@@ -198,16 +198,20 @@ func TestCreateTable(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	dbTable := Table{
 		Name: table,
-		// order incorrectly on purpose to ensure ordering works
 		Columns: []ColInfo{
 			{"test1", "int", "100", true, false, true, 1},
 			{"id", "text", "", false, true, false, 0},
+			{"somelongtext", "longtext", "", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
-	createSQL := `id character varying(256) PRIMARY KEY , test1 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY`
-	sql := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, schema, table, createSQL)
-	regex := `CREATE TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
+
+	//createSQL := `aasdadsa character varying(256) PRIMARY KEY , test5 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY , someww221longtext character varying(10000)`
+	//sql := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, schema, table, createSQL)
+	regex := `CREATE TABLE ".*".".*".*` +
+		`test1 integer DEFAULT 100 NOT NULL SORTKEY.*` +
+		`DISTKEY.*id character varying\(256\).*PRIMARY KEY.*` +
+		`somelongtext character varying\(10000\).*` // a little awk, but the prepare makes sure this is good
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -215,7 +219,7 @@ func TestCreateTable(t *testing.T) {
 	mockrs := Redshift{db}
 
 	mock.ExpectBegin()
-	mock.ExpectPrepare(sql)
+	mock.ExpectPrepare("this does not exist for sure")
 	mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
