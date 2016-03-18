@@ -219,7 +219,6 @@ func TestCreateTable(t *testing.T) {
 	mockrs := Redshift{db}
 
 	mock.ExpectBegin()
-	mock.ExpectPrepare("this does not exist for sure")
 	mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
