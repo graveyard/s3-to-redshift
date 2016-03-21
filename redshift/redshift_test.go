@@ -219,6 +219,7 @@ func TestCreateTable(t *testing.T) {
 	mockrs := Redshift{db}
 
 	mock.ExpectBegin()
+	mock.ExpectPrepare("This needs to be here, but not evaluated")
 	mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
