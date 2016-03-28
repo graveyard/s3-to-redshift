@@ -3,7 +3,7 @@ include golang.mk
 
 .PHONY: build test golint docs $(PKG) $(PKGS) vendor
 SHELL := /bin/bash
-PKG := github.com/Clever/s3-to-redshift/cmd
+PKG := github.com/Clever/s3-to-redshift
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
 $(eval $(call golang-version-check,1.5))
