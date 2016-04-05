@@ -372,7 +372,7 @@ func TestJSONCopy(t *testing.T) {
 		ConfFile:  "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE OFF COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", "auto", region, accessID, secretKey)
 
@@ -395,7 +395,7 @@ func TestJSONCopy(t *testing.T) {
 	}
 
 	// test with neither creds nor GZIP
-	sql = `COPY "%s"."%s" FROM '%s' WITH%s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON`
+	sql = `COPY "%s"."%s" FROM '%s' WITH%s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE OFF COMPUPDATE ON`
 	execRegex = fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"", "auto", region)
 
@@ -432,7 +432,7 @@ func TestManifestCopy(t *testing.T) {
 		ConfFile:  "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE OFF COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", "auto", region, accessID, secretKey)
 
