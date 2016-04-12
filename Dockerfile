@@ -9,4 +9,4 @@ RUN curl -L https://github.com/Clever/gearcmd/releases/download/v0.4.0/gearcmd-v
 
 COPY bin/s3-to-redshift /usr/bin/s3-to-redshift
 
-CMD ["gearcmd", "--name", "s3-to-redshift", "--cmd", "s3-to-redshift", "--cmdtimeout",  "59m"]
+CMD ["gearcmd", "--name", "s3-to-redshift", "--cmd", "s3-to-redshift", "--cmdtimeout",  "90m"]
