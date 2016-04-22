@@ -26,6 +26,7 @@ var (
 	dataDate        = flag.String("date", "", "data date we should process, must be full RFC3339")
 	configFile      = flag.String("config", "", "schema & table config to use in YAML format")
 	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
+	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host               = os.Getenv("REDSHIFT_HOST")
@@ -44,9 +45,31 @@ func fatalIfErr(err error, msg string) {
 	}
 }
 
+// helper function used for verifying inputs
+func getMapKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// Rounds down a dateTime to a granularity
+// For instance, 11:50AM will be truncated to 11:00AM
+// if given a granularity of an hour
+func truncateDate(date time.Time, granularity string) time.Time {
+	switch granularity {
+	case "hour":
+		return date.Truncate(time.Hour)
+	default:
+		// Round down to day granularity by default
+		return date.Truncate(24 * time.Hour)
+	}
+}
+
 // in a transaction, truncate, create or update, and then copy from the s3 JSON file or manifest
 // yell loudly if there is anything different in the target table compared to config (different distkey, etc)
-func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool) error {
+func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool, timeGranularity string) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -64,6 +87,12 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
+		// To prevent duplicates, clear away any existing data within a certain time range as the data date
+		// (that is, sharing the same data date up to a certain time granularity)
+		if err = db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
+			return fmt.Errorf("err truncating data for data refresh: %s", err)
+		}
+
 		if err = db.UpdateTable(tx, *targetTable, inputTable); err != nil {
 			return fmt.Errorf("err running update table: %s", err)
 		}
@@ -87,6 +116,14 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 // newer than what already exists.
 func main() {
 	flag.Parse()
+
+	// verify that timeGranularity is a supported value. for convenience,
+	// we use the convention that granularities must be valid PostgreSQL dateparts
+	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
+	supportedGranularities := map[string]bool{"hour": true, "day": true}
+	if !supportedGranularities[*timeGranularity] {
+		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
+	}
 
 	// use an custom bucket type for testablitity
 	bucket := s3filepath.S3Bucket{*inputBucket, awsRegion, awsAccessKeyID, awsSecretAccessKey}
@@ -122,7 +159,10 @@ func main() {
 		}
 
 		// unless --force, don't update unless input data is new
-		if lastTargetData != nil && !inputConf.DataDate.After(*lastTargetData) {
+		// Since lastTargetData comes from the columns, and
+		// inputConf.DataDate comes from the filename, we round to
+		// compare at the time granularity level
+		if lastTargetData != nil && (truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return
@@ -130,7 +170,7 @@ func main() {
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip, *timeGranularity), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}

@@ -353,6 +353,24 @@ func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error {
 	return err
 }
 
+// TruncateInTimeRange deletes all items within a specific time range - that is,
+// matching `dataDate` when rounded to a certain granularity `timeGranularity`
+// NOTE: this assumes that "time" is a column in the table
+func (r *Redshift) TruncateInTimeRange(tx *sql.Tx, schema, table string, dataDate time.Time, timeGranularity string, dataDateCol string) error {
+	truncSQL := fmt.Sprintf(`
+		DELETE FROM "%s"."%s"
+		WHERE date_trunc('%s', "%s") = date_trunc('%s', timestamp '%s')
+		`, schema, table, timeGranularity, dataDateCol, timeGranularity, dataDate.Format("2006-01-02 15:04:05"))
+	truncStmt, err := tx.Prepare(truncSQL)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Refreshing with the latest data. Running command: %s", truncSQL)
+	_, err = truncStmt.Exec()
+	return err
+}
+
 // VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is useful for
 // recreating the indices after a database has been modified and updating the query planner.
 func (r *Redshift) VacuumAnalyze() error {
