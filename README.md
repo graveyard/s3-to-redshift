@@ -2,7 +2,7 @@
 
 [![GoDoc](https://godoc.org/github.com/Clever/s3-to-redshift?status.svg)](https://godoc.org/github.com/Clever/s3-to-redshift)
 
-`s3-to-redshift` is responsible for getting data from `s3` into AWS Redshift for data analysis.
+`s3-to-redshift` is responsible for syncing data from `s3` into AWS Redshift for data analysis.
 
 *Note*: this repository formerly was called `redshifter`, but has been modified to fit a slightly different design pattern.
 
@@ -18,8 +18,8 @@ However, getting bulk data into `Redshift` can be tricky and requires many steps
 
 We are trying to minimize the amount of work to add or modify data going into `Redshift` by automatically:
 - Finding the latest data
-- Modifying the destination `Redshift` tables
-- Loading in the data efficiently using the `COPY` command
+- Modifying the destination `Redshift` tables, if necessary
+- Refreshing the latest `Redshift` data (see: the `granularity` flag) by efficiently loading s3 data using the `COPY` command
 
 ## Deploying
 
@@ -47,10 +47,11 @@ go run cmd/s3_to_redshift.go \
 -tables=<target_tables> \
 -bucket=<s3_bucket_to_pull_from> \
 -date=<target_date> \
+-granularity=<time_granularity> \
 ```
 
 All environment variables are required.
-The `schema`, `tables`, and `bucket` flags also are critical.
+The `schema`, `tables`, and `bucket` flags also are critical. `granularity` is recommended, but will default to `day` if not specified otherwise.
 
 ### Possible flags and their meanings:
 - `schema`: destination `Redshift` schema to insert into
@@ -60,6 +61,7 @@ The `schema`, `tables`, and `bucket` flags also are critical.
 - `force`: refresh the data even if the data date is after the current `s3` input date
 - `date`:  the date string for the data in question
 - `config`: override of the usual auto-discovery of the config
+- `granularity`: how often we expect to append new data for each table (i.e. daily, or hourly buckets)
 
 #### Note on general usage:
 
@@ -98,7 +100,7 @@ In this case, you can use the `--config` parameter to pass a specific config fil
 This file is accessed via [Pathio](https://github.com/Clever/pathio), so the file may reside on `s3` or locally.
 
 #### Using `--truncate`
-Without the `--truncate` option set, `s3-to-redshift` will insert into an existing table but leave any data already remaining in the table.
+Without the `--truncate` option set, `s3-to-redshift` will insert into an existing table but leave any data already remaining in the table (except for the most recent data within the past granularity time range, which will be refreshed as new syncs come in).
 Additionally, `s3-to-redshift` will not insert or overwrite for a particular time period thus the worker is idempotent and duplicate data is not a concern.
 This behavior is ideal if you are adding time-series data / fact data to `Redshift`.
 
@@ -108,6 +110,11 @@ If you instead are adding snapshot / dimension data to `Redshift`, you should us
 If the data in `s3` is not newer than the data in `Redshift`, the worker will refuse to truncate and replace the data without `--force`.
 
 Also please note that this can cause performance problems if you are not running a vacuum at least weekly.
+
+#### Using `--granularity`
+The `--granularity` flag describes how often we expect to append new data to the destination table. For instance, perhaps we would like to track daily school counts in `Redshift`. Therefore, we expect one set of values per day to be stored in this table (and we specify this with `--granularity=day`). Multiple `s3-to-redshift` syncs updating the daily school count can still happen each day, but only the most recent sync data will be stored (as `s3-to-redshift` will simply overwrite the existing school counts for the most recent day). As a result, `s3-to-redshift` refreshes data in the latest time range, while leaving historical data untouched (and modifiable only via `--force`). The width of this time range is specified by `--granularity`.
+
+Currently supported granularities are `hour` and `day`.
 
 ### Example run:
 Assuming that environment variables have been set:
