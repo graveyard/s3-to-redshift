@@ -477,6 +477,32 @@ func TestTruncate(t *testing.T) {
 	}
 }
 
+func TestTruncateInTimeRange(t *testing.T) {
+	schema, table := "test_schema", "test_table"
+	granularity := "hour"
+	timeColumn := "time"
+	dateString := "2016-04-21 20:29:05"
+	dataDate, _ := time.Parse("2006-01-02 15:04:05", dateString)
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db}
+
+	mock.ExpectBegin()
+	mock.ExpectPrepare(fmt.Sprintf(`DELETE FROM "%s"."%s" WHERE date_trunc('%s', "time") = date_trunc('%s', timestamp '%s')`, schema, table, granularity, granularity, dateString))
+	mock.ExpectExec(`DELETE FROM ".*".".*" WHERE date_trunc\('.*', "time"\) = date_trunc\('.*', timestamp '.*'\)`).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.TruncateInTimeRange(tx, schema, table, dataDate, granularity, timeColumn))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
 func TestVacuumAnalyzeTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
