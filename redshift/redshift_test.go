@@ -211,7 +211,7 @@ func TestCreateTable(t *testing.T) {
 	regex := `CREATE TABLE ".*".".*".*` +
 		`test1 integer DEFAULT 100 NOT NULL SORTKEY.*` +
 		`DISTKEY.*id character varying\(256\).*PRIMARY KEY.*` +
-		`somelongtext character varying\(10000\).*` // a little awk, but the prepare makes sure this is good
+		`somelongtext character varying\(65535\).*` // a little awk, but the prepare makes sure this is good
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
