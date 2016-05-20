@@ -23,7 +23,7 @@ We are trying to minimize the amount of work to add or modify data going into `R
 
 ## Deploying
 
-This is a standard mesos deploy, `fab mesos.apps.deploy:s3-to-redshift,env=production`
+This is a standard mesos deploy, `ark start -e production s3-to-redshift`
 
 ## Running
 
