@@ -1,5 +1,3 @@
-**Jira:**
-
 **Overview:**
 
 **Testing:**
