@@ -387,7 +387,7 @@ func TestJSONCopy(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.JSONCopy(tx, s3File, true, true))
+	assert.NoError(t, mockrs.Copy(tx, s3File, true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -410,7 +410,7 @@ func TestJSONCopy(t *testing.T) {
 
 	tx, err = mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.JSONCopy(tx, s3File, false, false))
+	assert.NoError(t, mockrs.Copy(tx, s3File, false, false))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -447,7 +447,7 @@ func TestManifestCopy(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.JSONCopy(tx, s3File, true, true))
+	assert.NoError(t, mockrs.Copy(tx, s3File, true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {

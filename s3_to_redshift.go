@@ -99,8 +99,8 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	}
 
 	// COPY direct into it, ok to do since we're in a transaction
-	if err = db.JSONCopy(tx, inputConf, true, gzip); err != nil {
-		return fmt.Errorf("err running JSON copy: %s", err)
+	if err = db.Copy(tx, inputConf, true, gzip); err != nil {
+		return fmt.Errorf("err running copy: %s", err)
 	}
 
 	if err = tx.Commit(); err != nil {
