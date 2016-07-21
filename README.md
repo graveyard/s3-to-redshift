@@ -61,6 +61,7 @@ The `schema`, `tables`, and `bucket` flags also are critical. `granularity` is r
 - `force`: refresh the data even if the data date is after the current `s3` input date
 - `date`:  the date string for the data in question
 - `config`: override of the usual auto-discovery of the config
+- `delimiter`: required to use CSV files, what the file is delimited in (likely use the '|' pipe character as that is AWS' default)
 - `granularity`: how often we expect to append new data for each table (i.e. daily, or hourly buckets)
 
 #### Note on general usage:

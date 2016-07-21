@@ -26,6 +26,7 @@ var (
 	dataDate        = flag.String("date", "", "data date we should process, must be full RFC3339")
 	configFile      = flag.String("config", "", "schema & table config to use in YAML format")
 	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
+	delimiter       = flag.String("delimiter", "", "delimiter for CSV files, usually pipe character")
 	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
@@ -67,9 +68,9 @@ func truncateDate(date time.Time, granularity string) time.Time {
 	}
 }
 
-// in a transaction, truncate, create or update, and then copy from the s3 JSON file or manifest
+// in a transaction, truncate, create or update, and then copy from the s3 dagta file or manifest
 // yell loudly if there is anything different in the target table compared to config (different distkey, etc)
-func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool, timeGranularity string) error {
+func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool, delimiter, timeGranularity string) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -99,7 +100,10 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	}
 
 	// COPY direct into it, ok to do since we're in a transaction
-	if err = db.Copy(tx, inputConf, true, gzip); err != nil {
+	// can't switch on file ending as manifest files b/c
+	// manifest files obscure the underlying file types
+	// instead just pass the delimiter along even if it's null
+	if err = db.Copy(tx, inputConf, delimiter, true, gzip); err != nil {
 		return fmt.Errorf("err running copy: %s", err)
 	}
 
@@ -170,7 +174,7 @@ func main() {
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip, *timeGranularity), "Issue running copy")
+		fatalIfErr(runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip, *delimiter, *timeGranularity), "Issue running copy")
 		// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 		log.Printf("done with table: %s.%s", inputConf.Schema, t)
 	}

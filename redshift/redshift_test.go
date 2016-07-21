@@ -385,7 +385,7 @@ func TestJSONCopy(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.Copy(tx, s3File, true, true))
+	assert.NoError(t, mockrs.Copy(tx, s3File, "", true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -407,7 +407,7 @@ func TestJSONCopy(t *testing.T) {
 
 	tx, err = mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.Copy(tx, s3File, false, false))
+	assert.NoError(t, mockrs.Copy(tx, s3File, "", false, false))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -443,7 +443,7 @@ func TestJSONManifestCopy(t *testing.T) {
 
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockrs.Copy(tx, s3File, true, true))
+	assert.NoError(t, mockrs.Copy(tx, s3File, "", true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
@@ -466,6 +466,100 @@ func TestTruncate(t *testing.T) {
 	tx, err := mockrs.Begin()
 	assert.NoError(t, err)
 	assert.NoError(t, mockrs.Truncate(tx, schema, table))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
+func TestCSVCopy(t *testing.T) {
+	schema, table := "testschema", "tablename"
+	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	s3File := s3filepath.S3File{
+		Bucket:   b,
+		Schema:   schema,
+		Table:    table,
+		Suffix:   "gz",
+		DataDate: time.Now(),
+		ConfFile: "",
+	}
+	// test with creds and GZIP
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' DELIMITER AS '|' EMPTYASNULL ACCEPTANYDATE`
+	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
+		"GZIP", region, accessID, secretKey)
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db}
+
+	mock.ExpectBegin()
+	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.Copy(tx, s3File, "|", true, true))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+
+	// test with neither creds nor GZIP
+	sql = `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON DELIMITER AS '|' REMOVEQUOTES TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
+	execRegex = fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(), "", region)
+
+	db, mock, err = sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs = Redshift{db}
+
+	mock.ExpectBegin()
+	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err = mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.Copy(tx, s3File, "|", false, false))
+	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
+func TestCSVManifestCopy(t *testing.T) {
+	schema, table := "testschema", "tablename"
+	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	s3File := s3filepath.S3File{
+		Bucket:   b,
+		Schema:   schema,
+		Table:    table,
+		Suffix:   "manifest",
+		DataDate: time.Now(),
+		ConfFile: "",
+	}
+	// test with creds and GZIP
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' DELIMITER AS '|' REMOVEQUOTES TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
+	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
+		"GZIP", region, accessID, secretKey)
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockrs := Redshift{db}
+
+	mock.ExpectBegin()
+	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	tx, err := mockrs.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockrs.Copy(tx, s3File, "|", true, true))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {

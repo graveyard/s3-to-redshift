@@ -40,6 +40,8 @@ func TestCreateS3File(t *testing.T) {
 		bucket, schema, table, expectedDate.Format(time.RFC3339))
 	jsonPath := "s3://b/s_t_2015-11-10T23:00:00Z.json"
 	jsonGzipPath := "s3://b/s_t_2015-11-10T23:00:00Z.json.gz"
+	csvPath := "s3://b/s_t_2015-11-10T23:00:00Z"
+	csvGzipPath := "s3://b/s_t_2015-11-10T23:00:00Z.gz"
 	manifestPath := "s3://b/s_t_2015-11-10T23:00:00Z.manifest"
 
 	// test completely non-existent file
@@ -51,7 +53,9 @@ func TestCreateS3File(t *testing.T) {
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json.gz", expectedDate)
 	testFiles := map[string]bool{
 		jsonGzipPath: true,
-		jsonPath:     true,
+		jsonPath:     true, // here to make sure it doesn't get confused if there's also a ".json" file
+		csvPath:      true,
+		csvGzipPath:  true,
 	}
 	returnedFile, err = CreateS3File(MockPathChecker{testFiles}, expFile.Bucket, schema, table, "", expectedDate)
 	assert.Equal(t, nil, err)
