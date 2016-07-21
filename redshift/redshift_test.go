@@ -52,12 +52,11 @@ func TestTableFromConf(t *testing.T) {
 	}
 
 	f := s3filepath.S3File{
-		Bucket:    b,
-		Schema:    schema,
-		Table:     table,
-		JSONPaths: "auto",
-		Suffix:    "json.gz",
-		DataDate:  time.Now(),
+		Bucket:   b,
+		Schema:   schema,
+		Table:    table,
+		Suffix:   "json.gz",
+		DataDate: time.Now(),
 	}
 
 	// valid
@@ -363,18 +362,17 @@ func TestJSONCopy(t *testing.T) {
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
 	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
 	s3File := s3filepath.S3File{
-		Bucket:    b,
-		Schema:    schema,
-		Table:     table,
-		JSONPaths: "auto",
-		Suffix:    "json.gz",
-		DataDate:  time.Now(),
-		ConfFile:  "",
+		Bucket:   b,
+		Schema:   schema,
+		Table:    table,
+		Suffix:   "json.gz",
+		DataDate: time.Now(),
+		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"GZIP", "auto", region, accessID, secretKey)
+		"GZIP", region, accessID, secretKey)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -395,9 +393,8 @@ func TestJSONCopy(t *testing.T) {
 	}
 
 	// test with neither creds nor GZIP
-	sql = `COPY "%s"."%s" FROM '%s' WITH%s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON`
-	execRegex = fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"", "auto", region)
+	sql = `COPY "%s"."%s" FROM '%s' WITH%s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON`
+	execRegex = fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(), "", region)
 
 	db, mock, err = sqlmock.New()
 	assert.NoError(t, err)
@@ -418,23 +415,22 @@ func TestJSONCopy(t *testing.T) {
 	}
 }
 
-func TestManifestCopy(t *testing.T) {
+func TestJSONManifestCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
 	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
 	s3File := s3filepath.S3File{
-		Bucket:    b,
-		Schema:    schema,
-		Table:     table,
-		JSONPaths: "auto",
-		Suffix:    "manifest",
-		DataDate:  time.Now(),
-		ConfFile:  "",
+		Bucket:   b,
+		Schema:   schema,
+		Table:    table,
+		Suffix:   "manifest",
+		DataDate: time.Now(),
+		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"GZIP", "auto", region, accessID, secretKey)
+		"GZIP", region, accessID, secretKey)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)

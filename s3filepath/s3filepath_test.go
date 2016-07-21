@@ -15,13 +15,12 @@ var (
 func getTestFileWithResults(b, s, t, r, aID, sk, confFile, suf string, date time.Time) S3File {
 	bucket := S3Bucket{b, r, aID, sk}
 	s3File := S3File{
-		Bucket:    bucket,
-		Schema:    s,
-		Table:     t,
-		JSONPaths: "auto",
-		Suffix:    suf,
-		DataDate:  date,
-		ConfFile:  confFile,
+		Bucket:   bucket,
+		Schema:   s,
+		Table:    t,
+		Suffix:   suf,
+		DataDate: date,
+		ConfFile: confFile,
 	}
 	return s3File
 }
