@@ -338,7 +338,9 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 	// default to CSV
 	jsonSQL := ""
 	jsonPathsSQL := ""
-	delimSQL := fmt.Sprintf("DELIMITER AS '%s' REMOVEQUOTES TRIMBLANKS EMPTYASNULL ACCEPTANYDATE", delimiter) // always removequotes, UNLOAD should add quotes
+	// always removequotes, UNLOAD should add quotes
+	// always say escape for CSVs, UNLOAD should always escape
+	delimSQL := fmt.Sprintf("DELIMITER AS '%s' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE", delimiter)
 	// figure out if we're doing JSON - no delim means JSON
 	if delimiter == "" {
 		jsonSQL = "JSON"
