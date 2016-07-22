@@ -79,22 +79,22 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	// TRUNCATE for dimension tables, but not fact tables
 	if truncate && targetTable != nil {
 		log.Println("truncating table!")
-		if err = db.Truncate(tx, inputConf.Schema, inputTable.Name); err != nil {
+		if err := db.Truncate(tx, inputConf.Schema, inputTable.Name); err != nil {
 			return fmt.Errorf("err running truncate table: %s", err)
 		}
 	}
 	if targetTable == nil {
-		if err = db.CreateTable(tx, inputTable); err != nil {
+		if err := db.CreateTable(tx, inputTable); err != nil {
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
 		// To prevent duplicates, clear away any existing data within a certain time range as the data date
 		// (that is, sharing the same data date up to a certain time granularity)
-		if err = db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
+		if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
 			return fmt.Errorf("err truncating data for data refresh: %s", err)
 		}
 
-		if err = db.UpdateTable(tx, *targetTable, inputTable); err != nil {
+		if err := db.UpdateTable(tx, *targetTable, inputTable); err != nil {
 			return fmt.Errorf("err running update table: %s", err)
 		}
 	}
@@ -103,11 +103,11 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	// can't switch on file ending as manifest files b/c
 	// manifest files obscure the underlying file types
 	// instead just pass the delimiter along even if it's null
-	if err = db.Copy(tx, inputConf, delimiter, true, gzip); err != nil {
+	if err := db.Copy(tx, inputConf, delimiter, true, gzip); err != nil {
 		return fmt.Errorf("err running copy: %s", err)
 	}
 
-	if err = tx.Commit(); err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("err committing transaction: %s", err)
 	}
 	return nil
