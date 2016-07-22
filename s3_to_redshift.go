@@ -26,7 +26,7 @@ var (
 	dataDate        = flag.String("date", "", "data date we should process, must be full RFC3339")
 	configFile      = flag.String("config", "", "schema & table config to use in YAML format")
 	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
-	delimiter       = flag.String("delimiter", "", "delimiter for CSV files, usually pipe character")
+	delimiter       = flag.String("delimiter", "", "delimiter for CSV files, usually pipe character. If empty then JSON will be assumed.")
 	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
@@ -68,7 +68,7 @@ func truncateDate(date time.Time, granularity string) time.Time {
 	}
 }
 
-// in a transaction, truncate, create or update, and then copy from the s3 dagta file or manifest
+// in a transaction, truncate, create or update, and then copy from the s3 data file or manifest
 // yell loudly if there is anything different in the target table compared to config (different distkey, etc)
 func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool, delimiter, timeGranularity string) error {
 	tx, err := db.Begin()

@@ -75,7 +75,7 @@ func CreateS3File(pc PathChecker, bucket S3Bucket, schema, table, suppliedConf s
 		"json.gz",  // 2) gzipped json file
 		"json",     // 3) json file
 		".gz",      // 4) gzipped csv file (.gz)
-		""} {       // 5) csv file (no suffix :-/)
+		""} {       // 5) csv file (no suffix when UNLOADed :-/)
 		inputFile := S3File{bucket, schema, table, suffix, date, confFile}
 		if pc.FileExists(inputFile.GetDataFilename()) {
 			return &inputFile, nil
