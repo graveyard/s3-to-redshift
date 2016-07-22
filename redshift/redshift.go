@@ -315,11 +315,11 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 	return nil
 }
 
-// JSONCopy copies JSON data present in an S3 file into a redshift table.
-// It also supports JSON data pointed at by a manifest file, if you pass in a manifest file.
+// Copy copies either CSV or JSON data present in an S3 file into a redshift table.
+// It also supports CSV or JSON data pointed at by a manifest file, if you pass in a manifest file.
 // this is meant to be run in a transaction, so the first arg must be a sql.Tx
 // if not using jsonPaths, set s3File.JSONPaths to "auto"
-func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) error {
+func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds, gzip bool) error {
 	var credSQL string
 	var credArgs []interface{}
 	if creds {
@@ -334,7 +334,21 @@ func (r *Redshift) JSONCopy(tx *sql.Tx, f s3filepath.S3File, creds, gzip bool) e
 	if f.Suffix == "manifest" {
 		manifestSQL = "manifest"
 	}
-	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s JSON '%s' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON %s %s`, f.Schema, f.Table, f.GetDataFilename(), gzipSQL, f.JSONPaths, f.Bucket.Region, manifestSQL, credSQL)
+
+	// default to CSV
+	jsonSQL := ""
+	jsonPathsSQL := ""
+	// always removequotes, UNLOAD should add quotes
+	// always say escape for CSVs, UNLOAD should always escape
+	delimSQL := fmt.Sprintf("DELIMITER AS '%s' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE", delimiter)
+	// figure out if we're doing JSON - no delim means JSON
+	if delimiter == "" {
+		jsonSQL = "JSON"
+		jsonPathsSQL = "'auto'"
+		delimSQL = ""
+	}
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s %s %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON %s %s %s`,
+		f.Schema, f.Table, f.GetDataFilename(), gzipSQL, jsonSQL, jsonPathsSQL, f.Bucket.Region, manifestSQL, credSQL, delimSQL)
 	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
 	// can't use prepare b/c of redshift-specific syntax that postgres does not like

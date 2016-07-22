@@ -61,6 +61,7 @@ The `schema`, `tables`, and `bucket` flags also are critical. `granularity` is r
 - `force`: refresh the data even if the data date is after the current `s3` input date
 - `date`:  the date string for the data in question
 - `config`: override of the usual auto-discovery of the config
+- `delimiter`: required to use CSV files, what the file is delimited in (likely use the '|' pipe character as that is AWS' default). If `""` then JSON copy is assumed
 - `granularity`: how often we expect to append new data for each table (i.e. daily, or hourly buckets)
 
 #### Note on general usage:
@@ -120,7 +121,7 @@ Currently supported granularities are `hour` and `day`.
 Assuming that environment variables have been set:
 ```
 go run cmd/s3_to_redshift.go -schema=api_hits -tables=pages,sessions \
-  -bucket=analytics -config=s3://analytics/api.yml -date=2015-07-01T00:00:00Z -force=true
+  -bucket=analytics -config=s3://analytics/api.yml -date=2015-07-01T00:00:00Z -force=true -delimiter="|"
 ```
 
 ## Vendoring

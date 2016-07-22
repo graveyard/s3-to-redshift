@@ -25,13 +25,12 @@ type S3Bucket struct {
 // S3File holds everything needed to run a COPY on the file
 type S3File struct {
 	// info on which file to get
-	Bucket    S3Bucket
-	Schema    string
-	Table     string
-	JSONPaths string
-	Suffix    string
-	DataDate  time.Time
-	ConfFile  string
+	Bucket   S3Bucket
+	Schema   string
+	Table    string
+	Suffix   string
+	DataDate time.Time
+	ConfFile string
 }
 
 // PathChecker is the interface for determining if a path in S3 exists, which allows
@@ -69,21 +68,18 @@ func CreateS3File(pc PathChecker, bucket S3Bucket, schema, table, suppliedConf s
 		confFile = suppliedConf
 	}
 
-	// Try to find manifest or data files in the order of:
-	// 1) manifest file
-	// 2) gzipped json file
-	// 3) json file
-	inputFile := S3File{bucket, schema, table, "auto", "manifest", date, confFile}
-	if pc.FileExists(inputFile.GetDataFilename()) {
-		return &inputFile, nil
-	}
-	inputFile = S3File{bucket, schema, table, "auto", "json.gz", date, confFile}
-	if pc.FileExists(inputFile.GetDataFilename()) {
-		return &inputFile, nil
-	}
-	inputFile = S3File{bucket, schema, table, "auto", "json", date, confFile}
-	if pc.FileExists(inputFile.GetDataFilename()) {
-		return &inputFile, nil
+	// Try to find manifest or data files out of the following patterns, in order
+	// we try to get in order as otherwise
+	for _, suffix := range []string{
+		"manifest", // 1) manifest file
+		"json.gz",  // 2) gzipped json file
+		"json",     // 3) json file
+		".gz",      // 4) gzipped csv file (.gz)
+		""} {       // 5) csv file (no suffix when UNLOADed :-/)
+		inputFile := S3File{bucket, schema, table, suffix, date, confFile}
+		if pc.FileExists(inputFile.GetDataFilename()) {
+			return &inputFile, nil
+		}
 	}
 	return nil, fmt.Errorf("S3 file not found at: bucket: %s schema: %s, table: %s date: %s",
 		bucket.Name, schema, table, formattedDate)
