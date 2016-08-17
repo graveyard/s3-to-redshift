@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	env "github.com/segmentio/go-env"
 
 	redshift "github.com/Clever/s3-to-redshift/redshift"
@@ -35,7 +38,6 @@ var (
 	dbName             = env.MustGet("REDSHIFT_DB")
 	user               = env.MustGet("REDSHIFT_USER")
 	pwd                = env.MustGet("REDSHIFT_PASSWORD")
-	awsRegion          = env.MustGet("AWS_REGION")
 	awsAccessKeyID     = env.MustGet("AWS_ACCESS_KEY_ID")
 	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
 )
@@ -66,6 +68,27 @@ func truncateDate(date time.Time, granularity string) time.Time {
 		// Round down to day granularity by default
 		return date.Truncate(24 * time.Hour)
 	}
+}
+
+// getRegionForBucket looks up the region name for the given bucket
+func getRegionForBucket(name string) (string, error) {
+	// Any region will work for the region lookup, but the request MUST use
+	// PathStyle
+	config := aws.NewConfig().WithRegion("us-west-1").WithS3ForcePathStyle(true)
+	session := session.New()
+	client := s3.New(session, config)
+	params := s3.GetBucketLocationInput{
+		Bucket: aws.String(name),
+	}
+	resp, err := client.GetBucketLocation(&params)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get location for bucket '%s', %s", name, err)
+	}
+	if resp.LocationConstraint == nil {
+		// "US Standard", returns an empty region. So return any region in the US
+		return "us-east-1", nil
+	}
+	return *resp.LocationConstraint, nil
 }
 
 // in a transaction, truncate, create or update, and then copy from the s3 data file or manifest
@@ -129,6 +152,8 @@ func main() {
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
 	}
 
+	awsRegion, locationErr := getRegionForBucket(*inputBucket)
+	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
 	// use an custom bucket type for testablitity
 	bucket := s3filepath.S3Bucket{*inputBucket, awsRegion, awsAccessKeyID, awsSecretAccessKey}
 
