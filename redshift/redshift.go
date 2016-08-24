@@ -230,7 +230,7 @@ func getColumnSQL(c ColInfo) string {
 		distKey = "DISTKEY"
 	}
 
-	return fmt.Sprintf(" %s %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
+	return fmt.Sprintf(" \"%s\" %s %s %s %s %s %s", c.Name, typeMapping[c.Type], defaultVal, notNull, sortKey, primaryKey, distKey)
 }
 
 // CreateTable runs the full create table command in the provided transaction, given a
