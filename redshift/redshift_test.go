@@ -208,9 +208,9 @@ func TestCreateTable(t *testing.T) {
 	//createSQL := `aasdadsa character varying(256) PRIMARY KEY , test5 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY , someww221longtext character varying(10000)`
 	//sql := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, schema, table, createSQL)
 	regex := `CREATE TABLE ".*".".*".*` +
-		`test1 integer DEFAULT 100 NOT NULL SORTKEY.*` +
-		`DISTKEY.*id character varying\(256\).*PRIMARY KEY.*` +
-		`somelongtext character varying\(65535\).*` // a little awk, but the prepare makes sure this is good
+		`"test1" integer DEFAULT 100 NOT NULL SORTKEY.*` +
+		`DISTKEY.*"id" character varying\(256\).*PRIMARY KEY.*` +
+		`"somelongtext" character varying\(65535\).*` // a little awk, but the prepare makes sure this is good
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
