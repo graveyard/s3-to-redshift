@@ -9,7 +9,9 @@ notify:
 publish:
   catapult:
     url: $$catapult_url
-    application: "s3-to-redshift"
+    applications: 
+    - "s3-to-redshift"
+    - "s3-to-redshift-fast"
   docker:
     docker_host: $$docker_server
     email: $$docker_email
