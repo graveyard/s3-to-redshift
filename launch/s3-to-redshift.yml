@@ -9,6 +9,7 @@ env:
 - REDSHIFT_PORT
 - REDSHIFT_HOST
 - REDSHIFT_DB
+- WORKER_NAME
 dependencies:
 - gearmand
 team: eng-ip
