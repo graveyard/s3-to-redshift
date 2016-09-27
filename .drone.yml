@@ -1,6 +1,3 @@
-env:
-- REPORT_CARD_GITHUB_STATUS_TOKEN=$$report_card_github_status_token
-- REPORT_CARD_GITHUB_REPO_TOKEN=$$report_card_github_repo_token
 image: clever/drone-go:1.7
 notify:
   email:
@@ -9,9 +6,9 @@ notify:
 publish:
   catapult:
     url: $$catapult_url
-    applications: 
-    - "s3-to-redshift"
-    - "s3-to-redshift-fast"
+    applications:
+    - s3-to-redshift
+    - s3-to-redshift-fast
   docker:
     docker_host: $$docker_server
     email: $$docker_email
@@ -23,7 +20,7 @@ publish:
     username: $$docker_username
     when:
       branch: master
+  report_card: {}
 script:
-- sudo pip install -q git+https://$REPORT_CARD_GITHUB_REPO_TOKEN@github.com/Clever/report-card.git; GITHUB_API_TOKEN=$REPORT_CARD_GITHUB_STATUS_TOKEN report-card --publish || true
 - make test
 - make build
