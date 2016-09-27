@@ -1,5 +1,8 @@
-**Overview:**
+**JIRA**:
 
-**Testing:**
+**Overview**:
 
-**Roll Out:**
+**Testing**:
+
+**Roll Out**:
+- [ ] Remember to deploy both `s3-to-redshift` and `s3-to-redshift-fast`
