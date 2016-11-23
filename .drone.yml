@@ -9,6 +9,7 @@ publish:
     applications:
     - s3-to-redshift
     - s3-to-redshift-fast
+    - s3-to-redshift-elb-logs
   docker:
     docker_host: $$docker_server
     email: $$docker_email
