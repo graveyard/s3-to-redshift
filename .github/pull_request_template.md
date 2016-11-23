@@ -5,4 +5,4 @@
 **Testing**:
 
 **Roll Out**:
-- [ ] Remember to deploy both `s3-to-redshift` and `s3-to-redshift-fast`
+- [ ] Remember to deploy all clones: `s3-to-redshift`, `s3-to-redshift-fast`, and `s3-to-redshift-elb-logs`
