@@ -42,7 +42,7 @@ REDSHIFT_PORT=5439 \
 REDSHIFT_DB=<redshift_db_name> \
 REDSHIFT_USER=<redshift_user> \
 REDSHIFT_PASSWORD=<redshift_pass> \
-go run cmd/s3_to_redshift.go \
+go run cmd/main.go \
 -schema=<target_schema> \
 -tables=<target_tables> \
 -bucket=<s3_bucket_to_pull_from> \
@@ -120,7 +120,7 @@ Currently supported granularities are `hour` and `day`.
 ### Example run:
 Assuming that environment variables have been set:
 ```
-go run cmd/s3_to_redshift.go -schema=api_hits -tables=pages,sessions \
+go run cmd/main.go -schema=api_hits -tables=pages,sessions \
   -bucket=analytics -config=s3://analytics/api.yml -date=2015-07-01T00:00:00Z -force=true -delimiter="|"
 ```
 
