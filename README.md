@@ -31,27 +31,15 @@ We split up environment variables and command line flags based on realistic ways
 Essentially, for data that corresponds to `Redshift` or `s3` connections, the config is stored in environment variables.
 Otherwise, it is likely one will want to change data such as `schema` or `table` between runs, so information like that is expected in flag form.
 
-### Running the `s3-to-redshift` worker:
+### Running locally:
+
+Testing can be done manually by running `s3-to-redshift` locally with the desired parameters:
 
 ```
-$ AWS_ACCESS_KEY_ID=<access_key_id> \
-AWS_SECRET_ACCESS_KEY=<secret_access_key> \
-AWS_REGION=<s3_bucket_region> \
-REDSHIFT_HOST=<redshift_cluster_host> \
-REDSHIFT_PORT=5439 \
-REDSHIFT_DB=<redshift_db_name> \
-REDSHIFT_USER=<redshift_user> \
-REDSHIFT_PASSWORD=<redshift_pass> \
-go run cmd/s3_to_redshift.go \
--schema=<target_schema> \
--tables=<target_tables> \
--bucket=<s3_bucket_to_pull_from> \
--date=<target_date> \
--granularity=<time_granularity> \
+SCHEMA=api TABLES=business_metrics_auth_counts ark start s3-to-redshift -e clever-dev -l
 ```
 
-All environment variables are required.
-The `schema`, `tables`, and `bucket` flags also are critical. `granularity` is recommended, but will default to `day` if not specified otherwise.
+See the Makefile for a complete list of parameters you can use for testing.
 
 ### Possible flags and their meanings:
 - `schema`: destination `Redshift` schema to insert into
@@ -120,7 +108,7 @@ Currently supported granularities are `hour` and `day`.
 ### Example run:
 Assuming that environment variables have been set:
 ```
-go run cmd/s3_to_redshift.go -schema=api_hits -tables=pages,sessions \
+go run cmd/main.go -schema=api_hits -tables=pages,sessions \
   -bucket=analytics -config=s3://analytics/api.yml -date=2015-07-01T00:00:00Z -force=true -delimiter="|"
 ```
 
