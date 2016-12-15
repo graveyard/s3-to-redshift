@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"log"
 	"os"
-
+	"path"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/kardianos/osext"
 	env "github.com/segmentio/go-env"
 
+	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
 )
@@ -42,8 +44,20 @@ var (
 	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
 )
 
+func init() {
+	dir, err := osext.ExecutableFolder()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = logger.SetGlobalRouting(path.Join(dir, "kvconfig.yml"))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func fatalIfErr(err error, msg string) {
 	if err != nil {
+		logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), false)
 		panic(fmt.Sprintf("%s: %s", msg, err)) // TODO: kayvee
 	}
 }
@@ -143,12 +157,14 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 // newer than what already exists.
 func main() {
 	flag.Parse()
+	defer logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), true)
 
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
 	supportedGranularities := map[string]bool{"hour": true, "day": true}
 	if !supportedGranularities[*timeGranularity] {
+		logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), false)
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
 	}
 
@@ -172,6 +188,7 @@ func main() {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
 		// override most recent data file
 		if *dataDate == "" {
+			logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), false)
 			panic("No date provided")
 		}
 		parsedDate, err := time.Parse(time.RFC3339, *dataDate)

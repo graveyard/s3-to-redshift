@@ -1,0 +1,10 @@
+routes:
+  job-finished:
+    matchers:
+      title: [ "job-finished" ]
+    output:
+      type: "alerts"
+      series: "job.finished"
+      dimensions: [ "function", "payload" ]
+      value: "value"
+      stat_type: "gauge"
