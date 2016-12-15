@@ -81,6 +81,6 @@ func CreateS3File(pc PathChecker, bucket S3Bucket, schema, table, suppliedConf s
 			return &inputFile, nil
 		}
 	}
-	return nil, fmt.Errorf("S3 file not found at: bucket: %s schema: %s, table: %s date: %s",
+	return nil, fmt.Errorf("s3 file not found at: bucket: %s schema: %s, table: %s date: %s",
 		bucket.Name, schema, table, formattedDate)
 }

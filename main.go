@@ -96,7 +96,7 @@ func getRegionForBucket(name string) (string, error) {
 	}
 	resp, err := client.GetBucketLocation(&params)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get location for bucket '%s', %s", name, err)
+		return "", fmt.Errorf("failed to get location for bucket '%s', %s", name, err)
 	}
 	if resp.LocationConstraint == nil {
 		// "US Standard", returns an empty region. So return any region in the US
