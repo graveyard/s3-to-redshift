@@ -1,8 +1,10 @@
 {
 	"ImportPath": "github.com/Clever/s3-to-redshift",
 	"GoVersion": "go1.5.1",
+	"GodepVersion": "v74",
 	"Packages": [
-		"github.com/Clever/s3-to-redshift/cmd",
+		"github.com/Clever/s3-to-redshift",
+		"github.com/Clever/s3-to-redshift/logger",
 		"github.com/Clever/s3-to-redshift/redshift",
 		"github.com/Clever/s3-to-redshift/s3filepath"
 	],
@@ -23,12 +25,72 @@
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/awserr",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/awsutil",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/client",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/client/metadata",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/corehandlers",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/credentials",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/defaults",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/ec2metadata",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/request",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws/session",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/endpoints",
 			"Comment": "v1.0.7-23-gb7b1a09",
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query",
+			"Comment": "v1.0.7-23-gb7b1a09",
+			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query/queryutil",
 			"Comment": "v1.0.7-23-gb7b1a09",
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
@@ -73,7 +135,16 @@
 			"Rev": "3433f3ea46d9f8019119e7dd41274e112a2359a9"
 		},
 		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "c2c54e542fb797ad986b31721e1baedf214ca413"
+		},
+		{
 			"ImportPath": "github.com/lib/pq",
+			"Comment": "go1.0-cutoff-74-g8ad2b29",
+			"Rev": "8ad2b298cadd691a77015666a5372eae5dbfac8f"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/oid",
 			"Comment": "go1.0-cutoff-74-g8ad2b29",
 			"Rev": "8ad2b298cadd691a77015666a5372eae5dbfac8f"
 		},
@@ -86,6 +157,33 @@
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Comment": "v1.0-42-gb8dc1ce",
 			"Rev": "b8dc1cecf15bdaf1988d9e87aa7cd98d899a06d6"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonpointer",
+			"Rev": "e0fe6f68307607d540ed8eac07a342c33fa1b54a"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonreference",
+			"Rev": "e02fc20de94c78484cd5ffb007f8af96be030a45"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonschema",
+			"Rev": "59f99ebfe5f712a0055e321231fc3be94e4e00b2"
+		},
+		{
+			"ImportPath": "gopkg.in/Clever/kayvee-go.v6",
+			"Comment": "v6.2.0",
+			"Rev": "fa278c9c7f83580b15c163c1efffe6fb4f2e3989"
+		},
+		{
+			"ImportPath": "gopkg.in/Clever/kayvee-go.v6/logger",
+			"Comment": "v6.2.0",
+			"Rev": "fa278c9c7f83580b15c163c1efffe6fb4f2e3989"
+		},
+		{
+			"ImportPath": "gopkg.in/Clever/kayvee-go.v6/router",
+			"Comment": "v6.2.0",
+			"Rev": "fa278c9c7f83580b15c163c1efffe6fb4f2e3989"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

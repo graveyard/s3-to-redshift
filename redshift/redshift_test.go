@@ -95,7 +95,7 @@ func TestTableFromConf(t *testing.T) {
 	f.ConfFile = fileName
 	returnedTable, err = db.GetTableFromConf(f)
 	if assert.Error(t, err) {
-		assert.Equal(t, true, strings.Contains(err.Error(), "Data Date Column must be set"))
+		assert.Equal(t, true, strings.Contains(err.Error(), "data date column must be set"))
 	}
 }
 

@@ -12,9 +12,11 @@ all: test build
 
 clean:
 	rm -f $(GOPATH)/src/$(PKG)/bin/$(EXECUTABLE)
+	rm -f $(GOPATH)/src/$(PKG)/bin/kvconfig.yml
 
 build: clean
 	go build -o bin/$(EXECUTABLE) $(PKG)
+	cp kvconfig.yml bin/kvconfig.yml
 
 test: $(PKGS)
 $(PKGS): golang-test-all-deps

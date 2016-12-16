@@ -47,7 +47,7 @@ func TestCreateS3File(t *testing.T) {
 	// test completely non-existent file
 	expFile := getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json.gz", expectedDate)
 	returnedFile, err := CreateS3File(MockPathChecker{}, expFile.Bucket, schema, "bad_table", "", expectedDate)
-	assert.Equal(t, errors.New("S3 file not found at: bucket: b schema: s, table: bad_table date: 2015-11-10T23:00:00Z"), err)
+	assert.Equal(t, errors.New("s3 file not found at: bucket: b schema: s, table: bad_table date: 2015-11-10T23:00:00Z"), err)
 
 	// test generated json gzip conf file
 	expFile = getTestFileWithResults(bucket, schema, table, region, accessID, secretKey, expConf, "json.gz", expectedDate)

@@ -131,7 +131,7 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error) {
 		return nil, err
 	}
 	if err := yaml.Unmarshal(data, &tempSchema); err != nil {
-		return nil, fmt.Errorf("Warning: could not parse file %s, err: %s\n", f.ConfFile, err)
+		return nil, fmt.Errorf("warning: could not parse file %s, err: %s", f.ConfFile, err)
 	}
 
 	// data we want is nested in a map - possible to have multiple tables in a conf file
@@ -143,7 +143,7 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error) {
 		return nil, fmt.Errorf("mismatched schema, conf: %s, file: %s", t.Meta.Schema, f.Schema)
 	}
 	if t.Meta.DataDateColumn == "" {
-		return nil, fmt.Errorf("Data Date Column must be set!")
+		return nil, fmt.Errorf("data date column must be set")
 	}
 
 	return &t, nil
