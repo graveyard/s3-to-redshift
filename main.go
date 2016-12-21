@@ -42,6 +42,13 @@ var (
 	pwd                = env.MustGet("REDSHIFT_PASSWORD")
 	awsAccessKeyID     = env.MustGet("AWS_ACCESS_KEY_ID")
 	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
+
+	// payloadForSignalFx holds a subset of the job payload that
+	// we want to alert on as a dimension in SignalFx.
+	// This is necessary because we would like to selectively group
+	// on job parameters - schema but not date, for instance, since
+	// logging the date would overwhelm SignalFx
+	payloadForSignalFx string
 )
 
 func init() {
@@ -57,7 +64,7 @@ func init() {
 
 func fatalIfErr(err error, msg string) {
 	if err != nil {
-		logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), false)
+		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic(fmt.Sprintf("%s: %s", msg, err)) // TODO: kayvee
 	}
 }
@@ -157,14 +164,17 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 // newer than what already exists.
 func main() {
 	flag.Parse()
-	defer logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), true)
+
+	payloadForSignalFx = fmt.Sprintf("--schema %s --tables %s --bucket %s --truncate=%t --force=%t --gzip=%t --delimiter %s --granularity %s",
+		*inputSchemaName, *inputTables, *inputBucket, *truncate, *force, *gzip, *delimiter, *timeGranularity)
+	defer logger.JobFinishedEvent(payloadForSignalFx, true)
 
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
 	supportedGranularities := map[string]bool{"hour": true, "day": true}
 	if !supportedGranularities[*timeGranularity] {
-		logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), false)
+		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
 	}
 
@@ -188,7 +198,7 @@ func main() {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
 		// override most recent data file
 		if *dataDate == "" {
-			logger.JobFinishedEvent(strings.Join(os.Args[1:], " "), false)
+			logger.JobFinishedEvent(payloadForSignalFx, false)
 			panic("No date provided")
 		}
 		parsedDate, err := time.Parse(time.RFC3339, *dataDate)
