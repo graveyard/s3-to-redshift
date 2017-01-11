@@ -5,6 +5,6 @@ routes:
     output:
       type: "alerts"
       series: "job.finished"
-      dimensions: [ "function", "payload" ]
+      dimensions: [ "source", "payload" ]
       value: "value"
       stat_type: "gauge"
