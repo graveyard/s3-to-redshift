@@ -1,0 +1,18 @@
+run:
+  type: docker
+env:
+- AWS_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- REDSHIFT_USER
+- REDSHIFT_PASSWORD
+- REDSHIFT_PORT
+- REDSHIFT_HOST
+- REDSHIFT_DB
+- WORKER_NAME
+dependencies:
+- gearmand
+team: eng-ip
+resources:
+  cpu: 0.05
+  max_mem: 0.05
