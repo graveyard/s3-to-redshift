@@ -94,6 +94,7 @@ var (
 		"boolean":   "boolean",
 		"float":     "double precision",
 		"int":       "integer",
+		"date":      "date",
 		"timestamp": "timestamp without time zone", // timestamp with timezone is not supported in redshift
 		"text":      "character varying(256)",      // unfortunately redshift turns text -> varchar 256
 		"longtext":  "character varying(65535)",    // when you actually need more than 256 characters
