@@ -16,7 +16,7 @@
 		},
 		{
 			"ImportPath": "github.com/Clever/pathio",
-			"Comment": "v3.0.0-2-gc9ab5fa",
+			"Comment": "v2.0.0-23-gc9ab5fa",
 			"Rev": "c9ab5faa09d73e85523f3540db96295eef381a91"
 		},
 		{
@@ -123,11 +123,6 @@
 			"Rev": "2c0ef11c03b8f28d694021d4a6bda2e24b040cd4"
 		},
 		{
-			"ImportPath": "github.com/aws/aws-sdk-go/private/endpoints",
-			"Comment": "v1.0.7-23-gb7b1a09",
-			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
-		},
-		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query",
 			"Comment": "v1.8.2-1-g2c0ef11",
 			"Rev": "2c0ef11c03b8f28d694021d4a6bda2e24b040cd4"
@@ -151,16 +146,6 @@
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
 			"Comment": "v1.8.2-1-g2c0ef11",
 			"Rev": "2c0ef11c03b8f28d694021d4a6bda2e24b040cd4"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/private/signer/v4",
-			"Comment": "v1.0.7-23-gb7b1a09",
-			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/private/waiter",
-			"Comment": "v1.0.7-23-gb7b1a09",
-			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/s3",

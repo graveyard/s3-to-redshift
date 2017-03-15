@@ -1,0 +1,21 @@
+run:
+  type: workflow
+use_iam_roles: true
+env:
+- AWS_REGION
+- REDSHIFT_USER
+- REDSHIFT_PASSWORD
+- REDSHIFT_PORT
+- REDSHIFT_HOST
+- REDSHIFT_DB
+- REDSHIFT_ROLE_ARN
+- VACUUM_WORKER
+- GEARMAN_ADMIN_USER
+- GEARMAN_ADMIN_PASS
+- GEARMAN_ADMIN_PATH
+dependencies:
+- gearman-admin
+resources:
+  cpu: 0.05
+  max_mem: 0.05
+team: eng-ip
