@@ -80,11 +80,6 @@
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
 		{
-			"ImportPath": "github.com/aws/aws-sdk-go/private/endpoints",
-			"Comment": "v1.0.7-23-gb7b1a09",
-			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
-		},
-		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query",
 			"Comment": "v1.0.7-23-gb7b1a09",
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
@@ -106,16 +101,6 @@
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
-			"Comment": "v1.0.7-23-gb7b1a09",
-			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/private/signer/v4",
-			"Comment": "v1.0.7-23-gb7b1a09",
-			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/private/waiter",
 			"Comment": "v1.0.7-23-gb7b1a09",
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
