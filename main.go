@@ -40,8 +40,8 @@ var (
 	dbName             = env.MustGet("REDSHIFT_DB")
 	user               = env.MustGet("REDSHIFT_USER")
 	pwd                = env.MustGet("REDSHIFT_PASSWORD")
-	awsAccessKeyID     = env.MustGet("AWS_ACCESS_KEY_ID")
-	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
+	awsAccessKeyID     = env.MustGet("REDSHIFT_AWS_ID")
+	awsSecretAccessKey = env.MustGet("REDSHIFT_AWS_KEY")
 
 	// payloadForSignalFx holds a subset of the job payload that
 	// we want to alert on as a dimension in SignalFx.
