@@ -1,5 +1,5 @@
 run:
-  type: docker
+  type: workflow
 env:
 - AWS_REGION
 - AWS_ACCESS_KEY_ID
@@ -10,8 +10,6 @@ env:
 - REDSHIFT_HOST
 - REDSHIFT_DB
 - WORKER_NAME
-dependencies:
-- gearmand
 team: eng-ip
 resources:
   cpu: 0.05
