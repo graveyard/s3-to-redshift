@@ -358,9 +358,8 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 }
 
 // Truncate deletes all items from a table, given a transaction, a schema string and a table name
-// you should run vacuum and analyze soon after doing this for performance reasons
 func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error {
-	truncStmt, err := tx.Prepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
+	truncStmt, err := tx.Prepare(fmt.Sprintf(`TRUNCATE "%s"."%s"`, schema, table))
 	if err != nil {
 		return err
 	}
