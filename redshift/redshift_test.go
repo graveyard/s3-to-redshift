@@ -459,8 +459,8 @@ func TestTruncate(t *testing.T) {
 	mockRedshift := Redshift{db}
 
 	mock.ExpectBegin()
-	mock.ExpectPrepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
-	mock.ExpectExec(`DELETE FROM ".*".".*"`).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectPrepare(fmt.Sprintf(`TRUNCATE "%s"."%s"`, schema, table))
+	mock.ExpectExec(`TRUNCATE ".*".".*"`).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
 	tx, err := mockRedshift.Begin()
