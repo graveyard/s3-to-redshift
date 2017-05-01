@@ -592,13 +592,3 @@ func TestTruncateInTimeRange(t *testing.T) {
 		t.Errorf("there were unfulfilled expections: %s", err)
 	}
 }
-
-func TestVacuumAnalyzeTable(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-	mockRedshift := Redshift{db}
-	mock.ExpectExec(`VACUUM FULL`).WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectExec(`ANALYZE`).WillReturnResult(sqlmock.NewResult(0, 0))
-	assert.NoError(t, mockRedshift.VacuumAnalyze())
-}
