@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -210,7 +209,7 @@ func main() {
 
 		// figure out what the current state of the table is to determine if the table is already up to date
 		targetTable, lastTargetData, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
-		if err != nil && err != sql.ErrNoRows { // ErrNoRows is fine, just means the table doesn't exist
+		if err != nil {
 			fatalIfErr(err, "Error getting existing latest table metadata") // use fatalIfErr to stay the same
 		}
 

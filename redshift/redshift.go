@@ -201,7 +201,10 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Tab
 	lastDataQuery := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`,
 		dataDateCol, schema, tableName, dataDateCol)
 	var lastData time.Time
-	if err = r.QueryRow(lastDataQuery).Scan(&lastData); err != nil {
+	err = r.QueryRow(lastDataQuery).Scan(&lastData)
+	if err != nil && err == sql.ErrNoRows {
+		return &retTable, nil, nil
+	} else if err != nil {
 		return nil, nil, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
 	}
 	return &retTable, &lastData, nil
