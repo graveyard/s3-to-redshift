@@ -201,7 +201,10 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Tab
 	lastDataQuery := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`,
 		dataDateCol, schema, tableName, dataDateCol)
 	var lastData time.Time
-	if err = r.QueryRow(lastDataQuery).Scan(&lastData); err != nil {
+	err = r.QueryRow(lastDataQuery).Scan(&lastData)
+	if err != nil && err == sql.ErrNoRows {
+		return &retTable, nil, nil
+	} else if err != nil {
 		return nil, nil, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
 	}
 	return &retTable, &lastData, nil
@@ -360,6 +363,8 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 // Truncate deletes all items from a table, given a transaction, a schema string and a table name
 // you should run vacuum and analyze soon after doing this for performance reasons
 func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error {
+	// We run 'DELETE FROM' instead of 'TRUNCATE' because 'TRUNCATE' can't be run in a transaction.
+	// See http://docs.aws.amazon.com/redshift/latest/dg/r_TRUNCATE.html.
 	truncStmt, err := tx.Prepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
 	if err != nil {
 		return err
@@ -386,10 +391,11 @@ func (r *Redshift) TruncateInTimeRange(tx *sql.Tx, schema, table string, dataDat
 	return err
 }
 
-// VacuumAnalyze performs VACUUM FULL; ANALYZE on the redshift database. This is useful for
+// VacuumDelete runs a vacuum - delete only command
 // recreating the indices after a database has been modified and updating the query planner.
-func (r *Redshift) VacuumAnalyze() error {
-	log.Printf("Executing 'VACCUM FULL; ANALYZE'")
-	_, err := r.Exec("VACUUM FULL; ANALYZE")
-	return err
+func (r *Redshift) VacuumDelete(schema, table string) error {
+	if _, err := r.Exec(fmt.Sprintf(`VACUUM DELETE ONLY %s."%s"`, schema, table)); err != nil {
+		return fmt.Errorf(`error vacuuming %s."%s": %s`, schema, table, err)
+	}
+	return nil
 }
