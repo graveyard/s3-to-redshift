@@ -155,9 +155,8 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	}
 
 	if truncate {
-		// If we've truncated the table we should run vacuum and analyze to sort the
-		// data, remove the deleted rows, and update the statistics.
-		if err := db.VacuumAnalyze(inputConf.Schema, inputTable.Name); err != nil {
+		// If we've truncated the table we should run vacuum to clear out the old data
+		if err := db.VacuumDelete(inputConf.Schema, inputTable.Name); err != nil {
 			return fmt.Errorf("err vacuuming or analyzing database: %s", err)
 		}
 	}
