@@ -10,7 +10,7 @@ env:
 - REDSHIFT_HOST
 - REDSHIFT_DB
 - WORKER_NAME
-team: eng-ip
 resources:
   cpu: 0.05
   max_mem: 0.05
+team: eng-ip
