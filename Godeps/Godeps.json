@@ -10,6 +10,11 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/Clever/discovery-go",
+			"Comment": "v1.4.0-10-g12684ef",
+			"Rev": "12684ef3012bf55b9827a6e7c96503e37b0d8379"
+		},
+		{
 			"ImportPath": "github.com/Clever/pathio",
 			"Comment": "v3.0.0-2-gc9ab5fa",
 			"Rev": "c9ab5faa09d73e85523f3540db96295eef381a91"
@@ -174,6 +179,11 @@
 		{
 			"ImportPath": "github.com/xeipuuv/gojsonschema",
 			"Rev": "59f99ebfe5f712a0055e321231fc3be94e4e00b2"
+		},
+		{
+			"ImportPath": "gopkg.in/Clever/kayvee-go.v3",
+			"Comment": "v3.0.0",
+			"Rev": "d49feee080e8e32e01a5f415cf1f9dc264dfb043"
 		},
 		{
 			"ImportPath": "gopkg.in/Clever/kayvee-go.v6",
