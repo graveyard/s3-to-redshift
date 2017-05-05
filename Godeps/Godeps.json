@@ -15,6 +15,11 @@
 			"Rev": "c9ab5faa09d73e85523f3540db96295eef381a91"
 		},
 		{
+			"ImportPath": "github.com/Clever/pq",
+			"Comment": "go1.0-cutoff-169-g84d549e",
+			"Rev": "84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45"
+		},
+		{
 			"ImportPath": "github.com/DATA-DOG/go-sqlmock",
 			"Comment": "v1.0.0-1-g081a694",
 			"Rev": "081a694b0af16f86d406ac2832433a98a6fa625a"

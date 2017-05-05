@@ -12,7 +12,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
-	_ "github.com/lib/pq" // Postgres driver.
+	// Use our own version of the postgres library so we get keep-alive support.
+	// See https://github.com/Clever/pq/pull/1
+	_ "github.com/Clever/pq"
 
 	"github.com/Clever/s3-to-redshift/s3filepath"
 )
@@ -106,7 +108,7 @@ var (
 // Don't need to pass s3 info unless doing a COPY operation
 func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error) {
 	flag.Parse()
-	source := fmt.Sprintf("host=%s port=%s dbname=%s connect_timeout=%d", host, port, db, timeout)
+	source := fmt.Sprintf("host=%s port=%s dbname=%s keepalive=1 connect_timeout=%d", host, port, db, timeout)
 	log.Println("Connecting to Redshift Source: ", source)
 	source += fmt.Sprintf(" user=%s password=%s", user, password)
 	sqldb, err := sql.Open("postgres", source)
