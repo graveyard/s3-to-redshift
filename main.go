@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	"github.com/kardianos/osext"
 	env "github.com/segmentio/go-env"
 
+	"github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
@@ -41,6 +44,7 @@ var (
 	pwd                = env.MustGet("REDSHIFT_PASSWORD")
 	awsAccessKeyID     = env.MustGet("AWS_ACCESS_KEY_ID")
 	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
+	vacuumWorker       = env.MustGet("VACUUM_WORKER")
 
 	// payloadForSignalFx holds a subset of the job payload that
 	// we want to alert on as a dimension in SignalFx.
@@ -48,9 +52,16 @@ var (
 	// on job parameters - schema but not date, for instance, since
 	// logging the date would overwhelm SignalFx
 	payloadForSignalFx string
+
+	gearmanAdminURL string
 )
 
 func init() {
+	gearmanAdminUser := env.MustGet("GEARMAN_ADMIN_USER")
+	gearmanAdminPass := env.MustGet("GEARMAN_ADMIN_PASS")
+	gearmanAdminPath := env.MustGet("GEARMAN_ADMIN_PATH")
+	gearmanAdminURL = generateServiceEndpoint(gearmanAdminUser, gearmanAdminPass, gearmanAdminPath)
+
 	dir, err := osext.ExecutableFolder()
 	if err != nil {
 		log.Fatal(err)
@@ -59,6 +70,19 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func generateServiceEndpoint(user, pass, path string) string {
+	hostPort, err := discovery.HostPort("gearman-admin", "http")
+	if err != nil {
+		log.Fatal(err)
+	}
+	proto, err := discovery.Proto("gearman-admin", "http")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf("%s://%s:%s@%s%s", proto, user, pass, hostPort, path)
 }
 
 func fatalIfErr(err error, msg string) {
@@ -156,8 +180,24 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 
 	if truncate {
 		// If we've truncated the table we should run vacuum to clear out the old data
-		if err := db.VacuumDelete(inputConf.Schema, inputTable.Name); err != nil {
-			return fmt.Errorf("err vacuuming or analyzing database: %s", err)
+		// Only one vacuum can be run at a time, so we're going to throw this over the wall to
+		// redshift-vacuum and use gearman-admin as a queueing service.
+		if len(gearmanAdminURL) == 0 {
+			log.Fatalf("Unable to post vacuum job to %s", vacuumWorker)
+		} else {
+			log.Println("Submitting job to Gearman admin")
+			client := &http.Client{}
+			endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
+			payload := fmt.Sprintf(`--delete %s."%s"`, inputConf.Schema, inputTable.Name)
+			req, err := http.NewRequest("POST", endpoint, bytes.NewReader([]byte(payload)))
+			if err != nil {
+				log.Fatalf("Error creating new request: %s", err)
+			}
+			req.Header.Add("Content-Type", "text/plain")
+			_, err = client.Do(req)
+			if err != nil {
+				log.Fatalf("Error submitting job: %s", err)
+			}
 		}
 	}
 	return nil

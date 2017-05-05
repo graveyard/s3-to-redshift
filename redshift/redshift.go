@@ -395,12 +395,3 @@ func (r *Redshift) TruncateInTimeRange(tx *sql.Tx, schema, table string, dataDat
 	_, err = truncStmt.Exec()
 	return err
 }
-
-// VacuumDelete runs a vacuum - delete only command
-// recreating the indices after a database has been modified and updating the query planner.
-func (r *Redshift) VacuumDelete(schema, table string) error {
-	if _, err := r.Exec(fmt.Sprintf(`VACUUM DELETE ONLY %s."%s"`, schema, table)); err != nil {
-		return fmt.Errorf(`error vacuuming %s."%s": %s`, schema, table, err)
-	}
-	return nil
-}
