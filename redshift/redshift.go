@@ -310,6 +310,9 @@ func checkSchemas(targetTable, inputTable Table) ([]string, []error) {
 
 		targetCol := targetTable.Columns[idx]
 		mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
+		if inCol.Name != targetCol.Name {
+			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Nane", inCol.Name, targetCol.Name))
+		}
 		if typeMapping[inCol.Type] != targetCol.Type {
 			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
 		}
