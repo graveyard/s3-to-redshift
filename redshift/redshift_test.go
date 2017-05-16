@@ -13,6 +13,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 // helper for TestTableFromConf - marshals the table into a file
@@ -519,9 +521,9 @@ func TestCheckSchemasSame(t *testing.T) {
 		ColInfo{Name: "DateColumn", PrimaryKey: true},
 	}}
 	t2 := t1
-	columnOps, errors := checkSchemas(t1, t2)
+	columnOps, err := checkSchemas(t1, t2)
 	assert.Equal(t, 0, len(columnOps))
-	assert.Equal(t, 0, len(errors), fmt.Sprintf("errors: %+v\n", errors))
+	assert.NoError(t, err)
 }
 
 func TestCheckSchemasAddColumns(t *testing.T) {
@@ -533,24 +535,38 @@ func TestCheckSchemasAddColumns(t *testing.T) {
 		ColInfo{Name: "DateColumn", PrimaryKey: false},
 		ColInfo{Name: "IntColumn2", PrimaryKey: true},
 	}}
-	columnOps, errors := checkSchemas(t1, t2)
-	assert.Equal(t, 0, len(errors), fmt.Sprintf("errors: %+v\n", errors))
+	columnOps, err := checkSchemas(t1, t2)
+	assert.NoError(t, err)
 	assert.Equal(t, 2, len(columnOps))
 }
 
 func TestCheckSchemasDiffs(t *testing.T) {
 	// Do a re-order and a type difference
 	t1 := Table{Columns: []ColInfo{
-		ColInfo{Name: "DateColumn", Type: "DateColumn"},
+		ColInfo{Name: "DateColumn", Type: "timestamp"},
 		ColInfo{Name: "IntColumn", Type: "integer"},
 		ColInfo{Name: "IntColumn2", Type: "long"},
 	}}
 	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", Type: "int"},
+		ColInfo{Name: "DateColumn", Type: "timestamp without time zone"},
+		ColInfo{Name: "IntColumn2", Type: "int"},
+	}}
+	columnOps, err := checkSchemas(t1, t2)
+	assert.Equal(t, 0, len(columnOps))
+	assert.Equal(t, 5, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
+}
+
+func TestReorder(t *testing.T) {
+	t1 := Table{Columns: []ColInfo{
 		ColInfo{Name: "IntColumn", Type: "integer"},
-		ColInfo{Name: "DateColumn", Type: "DateColumn"},
 		ColInfo{Name: "IntColumn2", Type: "integer"},
 	}}
-	columnOps, errors := checkSchemas(t1, t2)
+	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn2", Type: "int"},
+		ColInfo{Name: "IntColumn", Type: "int"},
+	}}
+	columnOps, err := checkSchemas(t1, t2)
 	assert.Equal(t, 0, len(columnOps))
-	assert.Equal(t, 3, len(errors))
+	assert.Equal(t, 2, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
 }
