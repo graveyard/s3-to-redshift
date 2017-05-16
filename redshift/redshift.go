@@ -268,9 +268,9 @@ func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error {
 // Note: only supports adding columns currently, not updating existing columns or removing them
 func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
 
-	columnOps, errors := checkSchemas(targetTable, inputTable)
-	if len(errors) > 0 {
-		return fmt.Errorf("mismatched schema: %+v\n", errors)
+	columnOps, err := checkSchemas(targetTable, inputTable)
+	if err != nil {
+		return fmt.Errorf("mismatched schema: %s", err)
 	}
 
 	// postgres only allows adding one column at a time
