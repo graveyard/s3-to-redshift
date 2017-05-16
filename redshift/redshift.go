@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
+	multierror "github.com/hashicorp/go-multierror"
 	// Use our own version of the postgres library so we get keep-alive support.
 	// See https://github.com/Clever/pq/pull/1
 	_ "github.com/Clever/pq"
@@ -290,14 +291,14 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 
 // checkSchemas takes in two tables and compares their column schemas to make sure they're compatible.
 // If they have any mismatched columns they are returned in the errors array. If the input table has
-// columns at the end that the target table does not then the appropriate alert tables sql commands are
+// columns at the end that the target table does not then the appropriate alter tables sql commands are
 // returned.
-func checkSchemas(targetTable, inputTable Table) ([]string, []error) {
+func checkSchemas(targetTable, inputTable Table) ([]string, error) {
 	var columnOps []string
-	var errors []error
+	var errors error
 
 	if len(inputTable.Columns) < len(targetTable.Columns) {
-		errors = append(errors, fmt.Errorf("target table has more columns than the input table"))
+		errors = multierror.Append(errors, fmt.Errorf("target table has more columns than the input table"))
 	}
 
 	for idx, inCol := range inputTable.Columns {
@@ -311,25 +312,25 @@ func checkSchemas(targetTable, inputTable Table) ([]string, []error) {
 		targetCol := targetTable.Columns[idx]
 		mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
 		if inCol.Name != targetCol.Name {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Nane", inCol.Name, targetCol.Name))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Name", inCol.Name, targetCol.Name))
 		}
 		if typeMapping[inCol.Type] != targetCol.Type {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
 		}
 		if inCol.DefaultVal != targetCol.DefaultVal {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal))
 		}
 		if inCol.NotNull != targetCol.NotNull {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull))
 		}
 		if inCol.PrimaryKey != targetCol.PrimaryKey {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
 		}
 		if inCol.DistKey != targetCol.DistKey {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
 		}
 		if inCol.SortOrdinal != targetCol.SortOrdinal {
-			errors = append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
 		}
 	}
 	return columnOps, errors

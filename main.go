@@ -21,6 +21,7 @@ import (
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
+	"github.com/hashicorp/go-multierror"
 )
 
 var (
@@ -239,7 +240,7 @@ func main() {
 	db, err := redshift.NewRedshift(host, port, dbName, user, pwd, timeout)
 	fatalIfErr(err, "error getting redshift instance")
 
-	var tablesWithErrors []string
+	var copyErrors error
 	// for each table passed in - likely we could goroutine this out
 	for _, t := range strings.Split(*inputTables, ",") {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
@@ -275,14 +276,14 @@ func main() {
 
 		if err := runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip, *delimiter, *timeGranularity); err != nil {
 			log.Printf("error running copy for table %s: %s", t, err)
-			tablesWithErrors = append(tablesWithErrors, t)
+			copyErrors = multierror.Append(copyErrors, err)
 		} else {
 			// DON'T NEED TO CREATE VIEWS - will be handled by the refresh script
 			log.Printf("done with table: %s.%s", inputConf.Schema, t)
 		}
 	}
-	if len(tablesWithErrors) > 0 {
-		log.Fatalf("error loading tables: %+v\n", tablesWithErrors)
+	if copyErrors != nil {
+		log.Fatalf("error loading tables: %s", copyErrors)
 	}
 	log.Println("done with full run")
 }
