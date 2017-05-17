@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
+	multierror "github.com/hashicorp/go-multierror"
 	// Use our own version of the postgres library so we get keep-alive support.
 	// See https://github.com/Clever/pq/pull/1
 	_ "github.com/Clever/pq"
@@ -266,46 +267,10 @@ func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error {
 // input table, and completes this action in the transaction provided
 // Note: only supports adding columns currently, not updating existing columns or removing them
 func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
-	columnOps := []string{}
-	for _, inCol := range inputTable.Columns {
-		var existingCol ColInfo
-		// yes, n^2, but how many are we really going to have, and I want to keep the ordering
-		// ignore if there are extra columns
-		for _, targetCol := range targetTable.Columns {
-			if inCol.Name == targetCol.Name {
-				mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
-				if typeMapping[inCol.Type] != targetCol.Type {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type)
-				}
-				if inCol.DefaultVal != targetCol.DefaultVal {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal)
-				}
-				if inCol.NotNull != targetCol.NotNull {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull)
-				}
-				if inCol.PrimaryKey != targetCol.PrimaryKey {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey)
-				}
-				if inCol.DistKey != targetCol.DistKey {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey)
-				}
-				if inCol.SortOrdinal != targetCol.SortOrdinal {
-					return fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal)
-				}
 
-				existingCol = targetCol
-				break
-			}
-		}
-		var emptyCol ColInfo
-		if existingCol == emptyCol {
-			alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" ADD COLUMN %s`, targetTable.Meta.Schema, targetTable.Name, getColumnSQL(inCol))
-			columnOps = append(columnOps, alterSQL)
-		}
-	}
-	if len(columnOps) == 0 {
-		log.Println("no schema update necessary")
-		return nil
+	columnOps, err := checkSchemas(targetTable, inputTable)
+	if err != nil {
+		return fmt.Errorf("mismatched schema: %s", err)
 	}
 
 	// postgres only allows adding one column at a time
@@ -318,10 +283,57 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 		log.Printf("Running command: %s", op)
 		_, err = alterStmt.Exec()
 		if err != nil {
-			return err
+			return fmt.Errorf("issue running statement %s: %s", op, err)
 		}
 	}
 	return nil
+}
+
+// checkSchemas takes in two tables and compares their column schemas to make sure they're compatible.
+// If they have any mismatched columns they are returned in the errors array. If the input table has
+// columns at the end that the target table does not then the appropriate alter tables sql commands are
+// returned.
+func checkSchemas(targetTable, inputTable Table) ([]string, error) {
+	var columnOps []string
+	var errors error
+
+	if len(inputTable.Columns) < len(targetTable.Columns) {
+		errors = multierror.Append(errors, fmt.Errorf("target table has more columns than the input table"))
+	}
+
+	for idx, inCol := range inputTable.Columns {
+		if len(targetTable.Columns) <= idx {
+			fmt.Printf("Missing column -- running alter table\n")
+			alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" ADD COLUMN %s`, targetTable.Meta.Schema, targetTable.Name, getColumnSQL(inCol))
+			columnOps = append(columnOps, alterSQL)
+			continue
+		}
+
+		targetCol := targetTable.Columns[idx]
+		mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
+		if inCol.Name != targetCol.Name {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Name", inCol.Name, targetCol.Name))
+		}
+		if typeMapping[inCol.Type] != targetCol.Type {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
+		}
+		if inCol.DefaultVal != targetCol.DefaultVal {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal))
+		}
+		if inCol.NotNull != targetCol.NotNull {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull))
+		}
+		if inCol.PrimaryKey != targetCol.PrimaryKey {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
+		}
+		if inCol.DistKey != targetCol.DistKey {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
+		}
+		if inCol.SortOrdinal != targetCol.SortOrdinal {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
+		}
+	}
+	return columnOps, errors
 }
 
 // Copy copies either CSV or JSON data present in an S3 file into a redshift table.

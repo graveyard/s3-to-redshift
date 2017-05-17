@@ -60,6 +60,14 @@
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"
 		},
 		{
+			"ImportPath": "github.com/hashicorp/errwrap",
+			"Rev": "7554cd9344cec97297fa6649b055a8c98c2a1e55"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go-multierror",
+			"Rev": "ed905158d87462226a13fe39ddf685ea65f1c11f"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws/credentials",
 			"Comment": "v1.0.7-23-gb7b1a09",
 			"Rev": "b7b1a098eeebcdf7db0af5818e255dc8569b88ce"

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -14,6 +13,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 // helper for TestTableFromConf - marshals the table into a file
@@ -228,131 +229,6 @@ func TestCreateTable(t *testing.T) {
 
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expections: %s", err)
-	}
-}
-
-func TestUpdateTable(t *testing.T) {
-	schema, table := "testschema", "tablename"
-
-	targetTable := Table{
-		Name: table,
-		// order incorrectly on purpose to ensure ordering works
-		Columns: []ColInfo{
-			{"test3", "boolean", "true", false, false, false, 0},
-			{"test2", "integer", "100", true, false, true, 1},
-			{"id", "character varying(256)", "", false, true, false, 0},
-			{"test4", "double precision", "false", false, false, false, 0},
-		},
-		Meta: Meta{Schema: schema},
-	}
-
-	inputTable := Table{
-		Name: table,
-		// order incorrectly on purpose to ensure ordering works
-		Columns: []ColInfo{
-			{"test3", "boolean", "true", false, false, false, 0},
-			{"test2", "int", "100", true, false, true, 1},
-			{"id", "text", "", false, true, false, 0},
-			{"test4", "float", "false", false, false, false, 0},
-		},
-		Meta: Meta{Schema: schema},
-	}
-
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-	mockRedshift := Redshift{db}
-
-	// test no update
-	mock.ExpectBegin()
-	mock.ExpectCommit()
-
-	tx, err := mockRedshift.Begin()
-	assert.NoError(t, err)
-	assert.NoError(t, mockRedshift.UpdateTable(tx, targetTable, inputTable))
-	assert.NoError(t, tx.Commit())
-
-	if err = mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expections: %s", err)
-	}
-
-	// test regular update
-
-	mock.ExpectBegin()
-	for _, updateSQL := range []string{
-		`ADD COLUMN id character varying(256) PRIMARY KEY `,
-		`ADD COLUMN test2 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY `,
-		`ADD COLUMN test4 double precision`,
-	} {
-		sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
-		regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
-
-		mock.ExpectPrepare(sql)
-		mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
-	}
-	mock.ExpectCommit()
-
-	fewerColumnsTargetTable := Table{
-		Name: table,
-		Columns: []ColInfo{
-			{"test3", "boolean", "true", false, false, false, 0},
-		},
-		Meta: Meta{Schema: schema},
-	}
-	tx, err = mockRedshift.Begin()
-	assert.NoError(t, err)
-	assert.NoError(t, mockRedshift.UpdateTable(tx, fewerColumnsTargetTable, inputTable))
-	assert.NoError(t, tx.Commit())
-
-	// test extra columns (no error currently)
-	fewerColumnsInputTable := Table{
-		Name: table,
-		// order incorrectly on purpose to ensure ordering works
-		Columns: []ColInfo{
-			{"id", "text", "", false, true, false, 0},
-		},
-		Meta: Meta{Schema: schema},
-	}
-	mock.ExpectBegin()
-	mock.ExpectCommit()
-
-	tx, err = mockRedshift.Begin()
-	assert.NoError(t, err)
-	assert.NoError(t, mockRedshift.UpdateTable(tx, targetTable, fewerColumnsInputTable))
-	assert.NoError(t, tx.Commit())
-
-	if err = mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expections: %s", err)
-	}
-
-	// test mismatching columns (does error)
-	// each one is one item off from: {1, "id", "text", "", false, true, false, 0},
-	for _, c := range []ColInfo{
-		{"id", "boolean", "", false, true, false, 0},
-		{"id", "text", "foo", false, true, false, 0},
-		{"id", "text", "", true, true, false, 0},
-		{"id", "text", "", false, false, false, 0},
-		{"id", "text", "", false, true, true, 0},
-		{"id", "text", "", false, true, false, 1},
-	} {
-		mismatchingColInputTable := Table{
-			Name:    table,
-			Columns: []ColInfo{c},
-			Meta:    Meta{Schema: schema},
-		}
-		mock.ExpectBegin()
-		mock.ExpectCommit()
-
-		tx, err = mockRedshift.Begin()
-		assert.NoError(t, err)
-		err = mockRedshift.UpdateTable(tx, targetTable, mismatchingColInputTable)
-		log.Println("mismatch err: ", err)
-		assert.Error(t, err)
-		assert.NoError(t, tx.Commit())
-
-		if err = mock.ExpectationsWereMet(); err != nil {
-			t.Errorf("there were unfulfilled expections: %s", err)
-		}
 	}
 }
 
@@ -590,4 +466,107 @@ func TestTruncateInTimeRange(t *testing.T) {
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expections: %s", err)
 	}
+}
+
+func TestUpdateTable(t *testing.T) {
+	schema, table := "testschema", "tablename"
+
+	inputTable := Table{
+		Name: table,
+		// order incorrectly on purpose to ensure ordering works
+		Columns: []ColInfo{
+			{"test3", "boolean", "true", false, false, false, 0},
+			{"test2", "int", "100", true, false, true, 1},
+			{"id", "text", "", false, true, false, 0},
+			{"test4", "float", "false", false, false, false, 0},
+		},
+		Meta: Meta{Schema: schema},
+	}
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockRedshift := Redshift{db}
+
+	mock.ExpectBegin()
+	for _, updateSQL := range []string{
+		`ADD COLUMN id character varying(256) PRIMARY KEY `,
+		`ADD COLUMN test2 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY `,
+		`ADD COLUMN test4 double precision`,
+	} {
+		sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
+		regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
+
+		mock.ExpectPrepare(sql)
+		mock.ExpectExec(regex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	}
+	mock.ExpectCommit()
+
+	fewerColumnsTargetTable := Table{
+		Name: table,
+		Columns: []ColInfo{
+			{"test3", "boolean", "true", false, false, false, 0},
+		},
+		Meta: Meta{Schema: schema},
+	}
+	tx, err := mockRedshift.Begin()
+	assert.NoError(t, err)
+	assert.NoError(t, mockRedshift.UpdateTable(tx, fewerColumnsTargetTable, inputTable))
+	assert.NoError(t, tx.Commit())
+}
+
+func TestCheckSchemasSame(t *testing.T) {
+	t1 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", PrimaryKey: true},
+		ColInfo{Name: "DateColumn", PrimaryKey: true},
+	}}
+	t2 := t1
+	columnOps, err := checkSchemas(t1, t2)
+	assert.Equal(t, 0, len(columnOps))
+	assert.NoError(t, err)
+}
+
+func TestCheckSchemasAddColumns(t *testing.T) {
+	t1 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", PrimaryKey: true},
+	}}
+	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", PrimaryKey: true},
+		ColInfo{Name: "DateColumn", PrimaryKey: false},
+		ColInfo{Name: "IntColumn2", PrimaryKey: true},
+	}}
+	columnOps, err := checkSchemas(t1, t2)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(columnOps))
+}
+
+func TestCheckSchemasDiffs(t *testing.T) {
+	// Do a re-order and a type difference
+	t1 := Table{Columns: []ColInfo{
+		ColInfo{Name: "DateColumn", Type: "timestamp"},
+		ColInfo{Name: "IntColumn", Type: "integer"},
+		ColInfo{Name: "IntColumn2", Type: "long"},
+	}}
+	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", Type: "int"},
+		ColInfo{Name: "DateColumn", Type: "timestamp without time zone"},
+		ColInfo{Name: "IntColumn2", Type: "int"},
+	}}
+	columnOps, err := checkSchemas(t1, t2)
+	assert.Equal(t, 0, len(columnOps))
+	assert.Equal(t, 5, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
+}
+
+func TestReorder(t *testing.T) {
+	t1 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", Type: "integer"},
+		ColInfo{Name: "IntColumn2", Type: "integer"},
+	}}
+	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn2", Type: "int"},
+		ColInfo{Name: "IntColumn", Type: "int"},
+	}}
+	columnOps, err := checkSchemas(t1, t2)
+	assert.Equal(t, 0, len(columnOps))
+	assert.Equal(t, 2, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
 }
