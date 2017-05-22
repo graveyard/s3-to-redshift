@@ -27,12 +27,12 @@ func TestJobFinished(t *testing.T) {
 	}{
 		{
 			rule:       "job-finished",
-			payload:    "--bucket clever-analytics-dev --schema api --tables business_metrics_auth_counts",
+			payload:    "--schema api --tables business_metrics_auth_counts",
 			didSucceed: true,
 		},
 		{
 			rule:       "job-finished",
-			payload:    "--bucket clever-analytics-dev --schema api --tables business_metrics_auth_counts",
+			payload:    "--schema api --tables business_metrics_auth_counts",
 			didSucceed: false,
 		},
 	}

@@ -212,8 +212,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 func main() {
 	flag.Parse()
 
-	payloadForSignalFx = fmt.Sprintf("--schema %s --tables %s --bucket %s --truncate=%t --force=%t --gzip=%t --delimiter %s --granularity %s",
-		*inputSchemaName, *inputTables, *inputBucket, *truncate, *force, *gzip, *delimiter, *timeGranularity)
+	payloadForSignalFx = fmt.Sprintf("--schema %s", *inputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
 
 	// verify that timeGranularity is a supported value. for convenience,
