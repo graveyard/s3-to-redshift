@@ -294,9 +294,19 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 // columns at the end that the target table does not then the appropriate alter tables sql commands are
 // returned.
 func checkSchemas(targetTable, inputTable Table) ([]string, error) {
+	// If the schema is mongo then we know the input files are json so ordering doesn't matter. At
+	// some point we could handle this in a more general way by checking if the input files are json.
+	// This wouldn't be too hard, but we would have to peak in the manifest file to check if all the
+	// files references are json.
+	if targetTable.Meta.Schema == "mongo" {
+		return checkColumnsWithoutOrdering(targetTable, inputTable)
+	}
+	return checkColumnsAndOrdering(targetTable, inputTable)
+}
+
+func checkColumnsAndOrdering(targetTable, inputTable Table) ([]string, error) {
 	var columnOps []string
 	var errors error
-
 	if len(inputTable.Columns) < len(targetTable.Columns) {
 		errors = multierror.Append(errors, fmt.Errorf("target table has more columns than the input table"))
 	}
@@ -310,30 +320,64 @@ func checkSchemas(targetTable, inputTable Table) ([]string, error) {
 		}
 
 		targetCol := targetTable.Columns[idx]
-		mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
-		if inCol.Name != targetCol.Name {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Name", inCol.Name, targetCol.Name))
+		err := checkColumn(inCol, targetCol)
+		if err != nil {
+			errors = multierror.Append(errors, err)
 		}
-		if typeMapping[inCol.Type] != targetCol.Type {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
+
+	}
+	return columnOps, errors
+}
+
+func checkColumnsWithoutOrdering(targetTable, inputTable Table) ([]string, error) {
+	var columnOps []string
+	var errors error
+
+	for _, inCol := range inputTable.Columns {
+		foundMatching := false
+		for _, targetCol := range targetTable.Columns {
+			if inCol.Name == targetCol.Name {
+				foundMatching = true
+				if err := checkColumn(inCol, targetCol); err != nil {
+					errors = multierror.Append(errors, err)
+				}
+			}
 		}
-		if inCol.DefaultVal != targetCol.DefaultVal {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal))
-		}
-		if inCol.NotNull != targetCol.NotNull {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull))
-		}
-		if inCol.PrimaryKey != targetCol.PrimaryKey {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
-		}
-		if inCol.DistKey != targetCol.DistKey {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
-		}
-		if inCol.SortOrdinal != targetCol.SortOrdinal {
-			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
+		if !foundMatching {
+			fmt.Printf("Missing column -- running alter table\n")
+			alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" ADD COLUMN %s`,
+				targetTable.Meta.Schema, targetTable.Name, getColumnSQL(inCol))
+			columnOps = append(columnOps, alterSQL)
 		}
 	}
 	return columnOps, errors
+}
+
+func checkColumn(inCol ColInfo, targetCol ColInfo) error {
+	var errors error
+	mismatchedTemplate := "mismatched column: %s property: %s, input: %v, target: %v"
+	if inCol.Name != targetCol.Name {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Name", inCol.Name, targetCol.Name))
+	}
+	if typeMapping[inCol.Type] != targetCol.Type {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
+	}
+	if inCol.DefaultVal != targetCol.DefaultVal {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal))
+	}
+	if inCol.NotNull != targetCol.NotNull {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "NotNull", inCol.NotNull, targetCol.NotNull))
+	}
+	if inCol.PrimaryKey != targetCol.PrimaryKey {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
+	}
+	if inCol.DistKey != targetCol.DistKey {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
+	}
+	if inCol.SortOrdinal != targetCol.SortOrdinal {
+		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
+	}
+	return errors
 }
 
 // Copy copies either CSV or JSON data present in an S3 file into a redshift table.
