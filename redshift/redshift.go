@@ -444,11 +444,13 @@ func (r *Redshift) Truncate(tx *sql.Tx, schema, table string) error {
 // TruncateInTimeRange deletes all items within a specific time range - that is,
 // matching `dataDate` when rounded to a certain granularity `timeGranularity`
 // NOTE: this assumes that "time" is a column in the table
-func (r *Redshift) TruncateInTimeRange(tx *sql.Tx, schema, table string, dataDate time.Time, timeGranularity string, dataDateCol string) error {
+func (r *Redshift) TruncateInTimeRange(tx *sql.Tx, schema, table, dataDateCol string,
+	start, end time.Time) error {
 	truncSQL := fmt.Sprintf(`
 		DELETE FROM "%s"."%s"
-		WHERE date_trunc('%s', "%s") = date_trunc('%s', timestamp '%s')
-		`, schema, table, timeGranularity, dataDateCol, timeGranularity, dataDate.Format("2006-01-02 15:04:05"))
+		WHERE '%s' >= '%s' AND '%s' < '%s'
+		`, schema, table, dataDateCol, start.Format("2006-01-02 15:04:05"),
+		dataDateCol, end.Format("2006-01-02 15:04:05"))
 	truncStmt, err := tx.Prepare(truncSQL)
 	if err != nil {
 		return err
