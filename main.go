@@ -156,10 +156,12 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
-		// To prevent duplicates, clear away any existing data within a certain time range as the data date
-		// (that is, sharing the same data date up to a certain time granularity)
-		if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
-			return fmt.Errorf("err truncating data for data refresh: %s", err)
+		if *timeGranularity != "stream" {
+			// To prevent duplicates, clear away any existing data within a certain time range as the data date
+			// (that is, sharing the same data date up to a certain time granularity)
+			if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
+				return fmt.Errorf("err truncating data for data refresh: %s", err)
+			}
 		}
 
 		if err := db.UpdateTable(tx, inputTable, *targetTable); err != nil {
@@ -218,7 +220,7 @@ func main() {
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
-	supportedGranularities := map[string]bool{"hour": true, "day": true}
+	supportedGranularities := map[string]bool{"hour": true, "day": true, "stream": true}
 	if !supportedGranularities[*timeGranularity] {
 		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
@@ -265,7 +267,9 @@ func main() {
 		// Since lastTargetData comes from the columns, and
 		// inputConf.DataDate comes from the filename, we round to
 		// compare at the time granularity level
-		if lastTargetData != nil && (truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
+		if *timeGranularity != "stream" &&
+			lastTargetData != nil &&
+			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return
