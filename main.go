@@ -64,16 +64,6 @@ func init() {
 	gearmanAdminPass := env.MustGet("GEARMAN_ADMIN_PASS")
 	gearmanAdminPath := env.MustGet("GEARMAN_ADMIN_PATH")
 	gearmanAdminURL = generateServiceEndpoint(gearmanAdminUser, gearmanAdminPass, gearmanAdminPath)
-
-	dir, err := osext.ExecutableFolder()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = logger.SetGlobalRouting(path.Join(dir, "kvconfig.yml"))
-	_ = err
-	//if err != nil {
-	// log.Fatal(err)
-	//}
 }
 
 func generateServiceEndpoint(user, pass, path string) string {
@@ -240,6 +230,15 @@ func startEndFromGranularity(t time.Time, granularity string) (time.Time, time.T
 // The worker also uses a column in the data to figure out whether the s3 data is
 // newer than what already exists.
 func main() {
+	dir, err := osext.ExecutableFolder()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = logger.SetGlobalRouting(path.Join(dir, "kvconfig.yml"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	flag.Parse()
 
 	payloadForSignalFx = fmt.Sprintf("--schema %s", *inputSchemaName)

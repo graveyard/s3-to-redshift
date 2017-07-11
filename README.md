@@ -91,6 +91,8 @@ This file is accessed via [Pathio](https://github.com/Clever/pathio), so the fil
 #### Using `--truncate`
 Without the `--truncate` option set, `s3-to-redshift` will insert into an existing table but leave any data already remaining in the table (except for the most recent data within the past granularity time range, which will be refreshed as new syncs come in).
 
+Additionally, `s3-to-redshift` will not insert or overwrite for a particular time period thus the worker is idempotent and duplicate data is not a concern.
+
 If you instead are adding snapshot / dimension data to `Redshift`, you should use the `--truncate` option to clear out the existing data before inserting the current "state of the world".
 
 *One caveat:* the `--truncate` option does not also imply `--force`!
