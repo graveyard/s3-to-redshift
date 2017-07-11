@@ -36,6 +36,8 @@ var (
 	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
 	delimiter       = flag.String("delimiter", "", "delimiter for CSV files, usually pipe character. If empty then JSON will be assumed.")
 	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
+	streamStart     = flag.String("streamStart", "", "The start of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
+	streamEnd       = flag.String("streamEnd", "", "The end of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host               = os.Getenv("REDSHIFT_HOST")
@@ -68,9 +70,10 @@ func init() {
 		log.Fatal(err)
 	}
 	err = logger.SetGlobalRouting(path.Join(dir, "kvconfig.yml"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = err
+	//if err != nil {
+	// log.Fatal(err)
+	//}
 }
 
 func generateServiceEndpoint(user, pass, path string) string {
@@ -156,12 +159,24 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
-		if *timeGranularity != "stream" {
-			// To prevent duplicates, clear away any existing data within a certain time range as the data date
-			// (that is, sharing the same data date up to a certain time granularity)
-			if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
-				return fmt.Errorf("err truncating data for data refresh: %s", err)
+		var start, end time.Time
+		var err error
+		if timeGranularity == "stream" {
+			start, err = time.Parse(*streamStart, "2006-01-02T15:04:05.000Z")
+			if err != nil {
+				return err
 			}
+			end, err = time.Parse(*streamEnd, "2006-01-02T15:04:05.000Z")
+			if err != nil {
+				return err
+			}
+		} else {
+			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity)
+		}
+		// To prevent duplicates, clear away any existing data within a certain time range as the data date
+		// (that is, sharing the same data date up to a certain time granularity)
+		if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputTable.Meta.DataDateColumn, start, end); err != nil {
+			return fmt.Errorf("err truncating data for data refresh: %s", err)
 		}
 
 		if err := db.UpdateTable(tx, inputTable, *targetTable); err != nil {
@@ -206,6 +221,19 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	return nil
 }
 
+func startEndFromGranularity(t time.Time, granularity string) (time.Time, time.Time) {
+	var duration time.Duration
+	if granularity == "day" {
+		duration = time.Hour * 24
+	} else {
+		duration = time.Hour * 24 * 7
+	}
+
+	start := t.UTC().Truncate(duration)
+	end := start.Add(duration)
+	return start, end
+}
+
 // This worker finds the latest file in s3 and uploads it to redshift
 // If the destination table does not exist, the worker creates it
 // If the destination table lacks columns, the worker creates those as well
@@ -229,7 +257,11 @@ func main() {
 	awsRegion, locationErr := getRegionForBucket(*inputBucket)
 	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
 	// use an custom bucket type for testablitity
-	bucket := s3filepath.S3Bucket{*inputBucket, awsRegion, awsAccessKeyID, awsSecretAccessKey}
+	bucket := s3filepath.S3Bucket{
+		Name:      *inputBucket,
+		Region:    awsRegion,
+		AccessID:  awsAccessKeyID,
+		SecretKey: awsSecretAccessKey}
 
 	timeout := 60 // can parameterize later if this is an issue
 	if host == "" {

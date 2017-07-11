@@ -8,6 +8,18 @@ PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
 $(eval $(call golang-version-check,1.8))
 
+# variables for testing
+export GEARMAN_ADMIN_PATH ?= x
+export GEARMAN_ADMIN_USER ?= x
+export GEARMAN_ADMIN_PASS ?= x
+export VACUUM_WORKER ?= x
+export REDSHIFT_PASSWORD ?= x
+export REDSHIFT_USER ?= x
+export REDSHIFT_DB ?= x
+export SERVICE_GEARMAN_ADMIN_HTTP_HOST ?= x
+export SERVICE_GEARMAN_ADMIN_HTTP_PORT ?= x
+export SERVICE_GEARMAN_ADMIN_HTTP_PROTO ?= x
+
 all: test build
 
 clean:
