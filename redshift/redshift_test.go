@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -226,6 +227,38 @@ func TestCreateTable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedshift.CreateTable(tx, dbTable))
 	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
+// that we disallow creation without a sortkey or distkey
+func TestNoKeyCreateTable(t *testing.T) {
+	schema, table := "testschema", "tablename"
+	dbTable := Table{
+		Name: table,
+		Columns: []ColInfo{
+			{"test1", "int", "100", true, false, false, 0},
+			{"id", "text", "", false, false, false, 0},
+			{"somelongtext", "longtext", "", false, false, false, 0},
+		},
+		Meta: Meta{Schema: schema},
+	}
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockRedshift := Redshift{db}
+
+	mock.ExpectBegin()
+
+	tx, err := mockRedshift.Begin()
+	assert.NoError(t, err)
+	createErr := mockRedshift.CreateTable(tx, dbTable)
+	assert.Error(t, createErr)
+	match, _ := regexp.MatchString("both SORTKEY and DISTKEY should be specified", createErr.Error())
+	assert.Equal(t, match, true)
 
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expections: %s", err)

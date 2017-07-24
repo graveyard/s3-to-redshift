@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -253,6 +254,11 @@ func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error {
 	args := []interface{}{strings.Join(columnSQL, ",")}
 	// for some reason prepare here was unable to succeed, perhaps look at this later
 	createSQL := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, table.Meta.Schema, table.Name, strings.Join(columnSQL, ","))
+
+	if match, _ := regexp.MatchString("SORTKEY|DISTKEY", createSQL); !match {
+		return fmt.Errorf("both SORTKEY and DISTKEY should be specified in create table: %s. Either create your own table if you truly don't want those keys, or update the config to contain both", createSQL)
+	}
+
 	createStmt, err := tx.Prepare(createSQL)
 	if err != nil {
 		return fmt.Errorf("issue preparing statement: %s", err)
