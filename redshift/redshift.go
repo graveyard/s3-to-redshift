@@ -377,10 +377,11 @@ func checkColumn(inCol ColInfo, targetCol ColInfo) error {
 	if inCol.PrimaryKey != targetCol.PrimaryKey {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
 	}
-	if inCol.DistKey != targetCol.DistKey {
+	// for distkey & sortkey it's ok if the source doesn't have them, but they should at least not disagree
+	if inCol.DistKey && inCol.DistKey != targetCol.DistKey {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
 	}
-	if inCol.SortOrdinal != targetCol.SortOrdinal {
+	if inCol.SortOrdinal != 0 && inCol.SortOrdinal != targetCol.SortOrdinal {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
 	}
 	return errors

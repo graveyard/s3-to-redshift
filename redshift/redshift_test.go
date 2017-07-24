@@ -590,6 +590,23 @@ func TestCheckSchemasDiffs(t *testing.T) {
 	assert.Equal(t, 5, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
 }
 
+func TestCheckSchemasDifferingSortkey(t *testing.T) {
+	// Do a different sortkey
+	t1 := Table{Columns: []ColInfo{
+		ColInfo{Name: "DateColumn", Type: "timestamp"},
+		ColInfo{Name: "IntColumn", Type: "int", SortOrdinal: 1},
+		ColInfo{Name: "IntColumn2", Type: "int"},
+	}}
+	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "DateColumn", Type: "timestamp without time zone"},
+		ColInfo{Name: "IntColumn", Type: "integer"},
+		ColInfo{Name: "IntColumn2", Type: "integer", SortOrdinal: 1},
+	}}
+	columnOps, err := checkSchemas(t2, t1)
+	assert.Equal(t, 0, len(columnOps))
+	assert.Equal(t, 1, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
+}
+
 func TestReorder(t *testing.T) {
 	t1 := Table{Columns: []ColInfo{
 		ColInfo{Name: "IntColumn", Type: "integer"},
