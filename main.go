@@ -162,7 +162,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 			return fmt.Errorf("err truncating data for data refresh: %s", err)
 		}
 
-		if err := db.UpdateTable(tx, *targetTable, inputTable); err != nil {
+		if err := db.UpdateTable(tx, inputTable, *targetTable); err != nil {
 			return fmt.Errorf("err running update table: %s", err)
 		}
 	}

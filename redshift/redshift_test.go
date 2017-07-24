@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -226,6 +227,38 @@ func TestCreateTable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedshift.CreateTable(tx, dbTable))
 	assert.NoError(t, tx.Commit())
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expections: %s", err)
+	}
+}
+
+// that we disallow creation without a sortkey or distkey
+func TestNoKeyCreateTable(t *testing.T) {
+	schema, table := "testschema", "tablename"
+	dbTable := Table{
+		Name: table,
+		Columns: []ColInfo{
+			{"test1", "int", "100", true, false, false, 0},
+			{"id", "text", "", false, false, false, 0},
+			{"somelongtext", "longtext", "", false, false, false, 0},
+		},
+		Meta: Meta{Schema: schema},
+	}
+
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+	mockRedshift := Redshift{db}
+
+	mock.ExpectBegin()
+
+	tx, err := mockRedshift.Begin()
+	assert.NoError(t, err)
+	createErr := mockRedshift.CreateTable(tx, dbTable)
+	assert.Error(t, createErr)
+	match, _ := regexp.MatchString("both SORTKEY and DISTKEY should be specified", createErr.Error())
+	assert.Equal(t, match, true)
 
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expections: %s", err)
@@ -511,7 +544,7 @@ func TestUpdateTable(t *testing.T) {
 	}
 	tx, err := mockRedshift.Begin()
 	assert.NoError(t, err)
-	assert.NoError(t, mockRedshift.UpdateTable(tx, fewerColumnsTargetTable, inputTable))
+	assert.NoError(t, mockRedshift.UpdateTable(tx, inputTable, fewerColumnsTargetTable))
 	assert.NoError(t, tx.Commit())
 }
 
@@ -527,46 +560,63 @@ func TestCheckSchemasSame(t *testing.T) {
 }
 
 func TestCheckSchemasAddColumns(t *testing.T) {
-	t1 := Table{Columns: []ColInfo{
-		ColInfo{Name: "IntColumn", PrimaryKey: true},
-	}}
-	t2 := Table{Columns: []ColInfo{
+	inputTable := Table{Columns: []ColInfo{
 		ColInfo{Name: "IntColumn", PrimaryKey: true},
 		ColInfo{Name: "DateColumn", PrimaryKey: false},
 		ColInfo{Name: "IntColumn2", PrimaryKey: true},
 	}}
-	columnOps, err := checkSchemas(t1, t2)
+	t2 := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", PrimaryKey: true},
+	}}
+	columnOps, err := checkSchemas(inputTable, t2)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(columnOps))
 }
 
 func TestCheckSchemasDiffs(t *testing.T) {
 	// Do a re-order and a type difference
-	t1 := Table{Columns: []ColInfo{
-		ColInfo{Name: "DateColumn", Type: "timestamp"},
-		ColInfo{Name: "IntColumn", Type: "integer"},
-		ColInfo{Name: "IntColumn2", Type: "long"},
-	}}
-	t2 := Table{Columns: []ColInfo{
+	inputTable := Table{Columns: []ColInfo{
 		ColInfo{Name: "IntColumn", Type: "int"},
 		ColInfo{Name: "DateColumn", Type: "timestamp without time zone"},
 		ColInfo{Name: "IntColumn2", Type: "int"},
 	}}
-	columnOps, err := checkSchemas(t1, t2)
+	targetTable := Table{Columns: []ColInfo{
+		ColInfo{Name: "DateColumn", Type: "timestamp"},
+		ColInfo{Name: "IntColumn", Type: "integer"},
+		ColInfo{Name: "IntColumn2", Type: "long"},
+	}}
+	columnOps, err := checkSchemas(inputTable, targetTable)
 	assert.Equal(t, 0, len(columnOps))
 	assert.Equal(t, 5, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
 }
 
-func TestReorder(t *testing.T) {
-	t1 := Table{Columns: []ColInfo{
-		ColInfo{Name: "IntColumn", Type: "integer"},
-		ColInfo{Name: "IntColumn2", Type: "integer"},
+func TestCheckSchemasDifferingSortkey(t *testing.T) {
+	// Do a different sortkey
+	inputTable := Table{Columns: []ColInfo{
+		ColInfo{Name: "DateColumn", Type: "timestamp"},
+		ColInfo{Name: "IntColumn", Type: "int", SortOrdinal: 1},
+		ColInfo{Name: "IntColumn2", Type: "int"},
 	}}
-	t2 := Table{Columns: []ColInfo{
+	targetTable := Table{Columns: []ColInfo{
+		ColInfo{Name: "DateColumn", Type: "timestamp without time zone"},
+		ColInfo{Name: "IntColumn", Type: "integer"},
+		ColInfo{Name: "IntColumn2", Type: "integer", SortOrdinal: 1},
+	}}
+	columnOps, err := checkSchemas(inputTable, targetTable)
+	assert.Equal(t, 0, len(columnOps))
+	assert.Equal(t, 1, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
+}
+
+func TestReorder(t *testing.T) {
+	inputTable := Table{Columns: []ColInfo{
 		ColInfo{Name: "IntColumn2", Type: "int"},
 		ColInfo{Name: "IntColumn", Type: "int"},
 	}}
-	columnOps, err := checkSchemas(t1, t2)
+	targetTable := Table{Columns: []ColInfo{
+		ColInfo{Name: "IntColumn", Type: "integer"},
+		ColInfo{Name: "IntColumn2", Type: "integer"},
+	}}
+	columnOps, err := checkSchemas(inputTable, targetTable)
 	assert.Equal(t, 0, len(columnOps))
 	assert.Equal(t, 2, len(err.(*multierror.Error).Errors), fmt.Sprintf("Errors: %s", err))
 }

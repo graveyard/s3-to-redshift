@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -253,6 +254,11 @@ func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error {
 	args := []interface{}{strings.Join(columnSQL, ",")}
 	// for some reason prepare here was unable to succeed, perhaps look at this later
 	createSQL := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, table.Meta.Schema, table.Name, strings.Join(columnSQL, ","))
+
+	if match, _ := regexp.MatchString("SORTKEY|DISTKEY", createSQL); !match {
+		return fmt.Errorf("both SORTKEY and DISTKEY should be specified in create table: %s. Either create your own table if you truly don't want those keys, or update the config to contain both", createSQL)
+	}
+
 	createStmt, err := tx.Prepare(createSQL)
 	if err != nil {
 		return fmt.Errorf("issue preparing statement: %s", err)
@@ -266,9 +272,9 @@ func (r *Redshift) CreateTable(tx *sql.Tx, table Table) error {
 // UpdateTable figures out what columns we need to add to the target table based on the
 // input table, and completes this action in the transaction provided
 // Note: only supports adding columns currently, not updating existing columns or removing them
-func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error {
+func (r *Redshift) UpdateTable(tx *sql.Tx, inputTable, targetTable Table) error {
 
-	columnOps, err := checkSchemas(targetTable, inputTable)
+	columnOps, err := checkSchemas(inputTable, targetTable)
 	if err != nil {
 		return fmt.Errorf("mismatched schema: %s", err)
 	}
@@ -293,18 +299,18 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, targetTable, inputTable Table) error 
 // If they have any mismatched columns they are returned in the errors array. If the input table has
 // columns at the end that the target table does not then the appropriate alter tables sql commands are
 // returned.
-func checkSchemas(targetTable, inputTable Table) ([]string, error) {
+func checkSchemas(inputTable, targetTable Table) ([]string, error) {
 	// If the schema is mongo then we know the input files are json so ordering doesn't matter. At
 	// some point we could handle this in a more general way by checking if the input files are json.
 	// This wouldn't be too hard, but we would have to peak in the manifest file to check if all the
 	// files references are json.
 	if targetTable.Meta.Schema == "mongo" {
-		return checkColumnsWithoutOrdering(targetTable, inputTable)
+		return checkColumnsWithoutOrdering(inputTable, targetTable)
 	}
-	return checkColumnsAndOrdering(targetTable, inputTable)
+	return checkColumnsAndOrdering(inputTable, targetTable)
 }
 
-func checkColumnsAndOrdering(targetTable, inputTable Table) ([]string, error) {
+func checkColumnsAndOrdering(inputTable, targetTable Table) ([]string, error) {
 	var columnOps []string
 	var errors error
 	if len(inputTable.Columns) < len(targetTable.Columns) {
@@ -329,7 +335,7 @@ func checkColumnsAndOrdering(targetTable, inputTable Table) ([]string, error) {
 	return columnOps, errors
 }
 
-func checkColumnsWithoutOrdering(targetTable, inputTable Table) ([]string, error) {
+func checkColumnsWithoutOrdering(inputTable, targetTable Table) ([]string, error) {
 	var columnOps []string
 	var errors error
 
@@ -371,10 +377,11 @@ func checkColumn(inCol ColInfo, targetCol ColInfo) error {
 	if inCol.PrimaryKey != targetCol.PrimaryKey {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "PrimaryKey", inCol.PrimaryKey, targetCol.PrimaryKey))
 	}
-	if inCol.DistKey != targetCol.DistKey {
+	// for distkey & sortkey it's ok if the source doesn't have them, but they should at least not disagree
+	if inCol.DistKey && inCol.DistKey != targetCol.DistKey {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DistKey", inCol.DistKey, targetCol.DistKey))
 	}
-	if inCol.SortOrdinal != targetCol.SortOrdinal {
+	if inCol.SortOrdinal != 0 && inCol.SortOrdinal != targetCol.SortOrdinal {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "SortOrdinal", inCol.SortOrdinal, targetCol.SortOrdinal))
 	}
 	return errors
