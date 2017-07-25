@@ -11,17 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/kardianos/osext"
-	env "github.com/segmentio/go-env"
-
-	"github.com/Clever/discovery-go"
+	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
-	"github.com/hashicorp/go-multierror"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	multierror "github.com/hashicorp/go-multierror"
+	"github.com/kardianos/osext"
+	env "github.com/segmentio/go-env"
 )
 
 var (
@@ -152,11 +151,11 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 		var start, end time.Time
 		var err error
 		if timeGranularity == "stream" {
-			start, err = time.Parse(*streamStart, "2006-01-02T15:04:05.000Z")
+			start, err = time.Parse("2006-01-02T15:04:05", *streamStart)
 			if err != nil {
 				return err
 			}
-			end, err = time.Parse(*streamEnd, "2006-01-02T15:04:05.000Z")
+			end, err = time.Parse("2006-01-02T15:04:05", *streamEnd)
 			if err != nil {
 				return err
 			}
