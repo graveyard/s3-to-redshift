@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
 	multierror "github.com/hashicorp/go-multierror"
@@ -448,7 +448,7 @@ func (r *Redshift) TruncateInTimeRange(tx *sql.Tx, schema, table, dataDateCol st
 	start, end time.Time) error {
 	truncSQL := fmt.Sprintf(`
 		DELETE FROM "%s"."%s"
-		WHERE '%s' >= '%s' AND '%s' < '%s'
+		WHERE "%s" >= '%s' AND "%s" < '%s'
 		`, schema, table, dataDateCol, start.Format("2006-01-02 15:04:05"),
 		dataDateCol, end.Format("2006-01-02 15:04:05"))
 	truncStmt, err := tx.Prepare(truncSQL)
