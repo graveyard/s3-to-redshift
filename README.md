@@ -90,8 +90,8 @@ This file is accessed via [Pathio](https://github.com/Clever/pathio), so the fil
 
 #### Using `--truncate`
 Without the `--truncate` option set, `s3-to-redshift` will insert into an existing table but leave any data already remaining in the table (except for the most recent data within the past granularity time range, which will be refreshed as new syncs come in).
+
 Additionally, `s3-to-redshift` will not insert or overwrite for a particular time period thus the worker is idempotent and duplicate data is not a concern.
-This behavior is ideal if you are adding time-series data / fact data to `Redshift`.
 
 If you instead are adding snapshot / dimension data to `Redshift`, you should use the `--truncate` option to clear out the existing data before inserting the current "state of the world".
 
@@ -103,7 +103,9 @@ Also please note that this can cause performance problems if you are not running
 #### Using `--granularity`
 The `--granularity` flag describes how often we expect to append new data to the destination table. For instance, perhaps we would like to track daily school counts in `Redshift`. Therefore, we expect one set of values per day to be stored in this table (and we specify this with `--granularity=day`). Multiple `s3-to-redshift` syncs updating the daily school count can still happen each day, but only the most recent sync data will be stored (as `s3-to-redshift` will simply overwrite the existing school counts for the most recent day). As a result, `s3-to-redshift` refreshes data in the latest time range, while leaving historical data untouched (and modifiable only via `--force`). The width of this time range is specified by `--granularity`.
 
-Currently supported granularities are `hour` and `day`.
+We also support a 'streaming' granularity which means that we don't have a fixed granularity and we can pull data whenever. If the granularity is streaming we only add new data to the table.
+
+Currently supported granularities are `hour`, `day`, `stream`.
 
 ### Example run:
 Assuming that environment variables have been set:

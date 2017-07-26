@@ -11,17 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/kardianos/osext"
-	env "github.com/segmentio/go-env"
-
-	"github.com/Clever/discovery-go"
+	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
-	"github.com/hashicorp/go-multierror"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	multierror "github.com/hashicorp/go-multierror"
+	"github.com/kardianos/osext"
+	env "github.com/segmentio/go-env"
 )
 
 var (
@@ -36,6 +35,8 @@ var (
 	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
 	delimiter       = flag.String("delimiter", "", "delimiter for CSV files, usually pipe character. If empty then JSON will be assumed.")
 	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
+	streamStart     = flag.String("streamStart", "", "The start of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
+	streamEnd       = flag.String("streamEnd", "", "The end of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host               = os.Getenv("REDSHIFT_HOST")
@@ -62,15 +63,6 @@ func init() {
 	gearmanAdminPass := env.MustGet("GEARMAN_ADMIN_PASS")
 	gearmanAdminPath := env.MustGet("GEARMAN_ADMIN_PATH")
 	gearmanAdminURL = generateServiceEndpoint(gearmanAdminUser, gearmanAdminPass, gearmanAdminPath)
-
-	dir, err := osext.ExecutableFolder()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = logger.SetGlobalRouting(path.Join(dir, "kvconfig.yml"))
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func generateServiceEndpoint(user, pass, path string) string {
@@ -156,9 +148,23 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 			return fmt.Errorf("err running create table: %s", err)
 		}
 	} else {
+		var start, end time.Time
+		var err error
+		if timeGranularity == "stream" {
+			start, err = time.Parse("2006-01-02T15:04:05", *streamStart)
+			if err != nil {
+				return err
+			}
+			end, err = time.Parse("2006-01-02T15:04:05", *streamEnd)
+			if err != nil {
+				return err
+			}
+		} else {
+			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity)
+		}
 		// To prevent duplicates, clear away any existing data within a certain time range as the data date
 		// (that is, sharing the same data date up to a certain time granularity)
-		if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputConf.DataDate, timeGranularity, inputTable.Meta.DataDateColumn); err != nil {
+		if err := db.TruncateInTimeRange(tx, inputConf.Schema, inputTable.Name, inputTable.Meta.DataDateColumn, start, end); err != nil {
 			return fmt.Errorf("err truncating data for data refresh: %s", err)
 		}
 
@@ -204,12 +210,34 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	return nil
 }
 
+func startEndFromGranularity(t time.Time, granularity string) (time.Time, time.Time) {
+	var duration time.Duration
+	if granularity == "day" {
+		duration = time.Hour * 24
+	} else {
+		duration = time.Hour * 24 * 7
+	}
+
+	start := t.UTC().Truncate(duration)
+	end := start.Add(duration)
+	return start, end
+}
+
 // This worker finds the latest file in s3 and uploads it to redshift
 // If the destination table does not exist, the worker creates it
 // If the destination table lacks columns, the worker creates those as well
 // The worker also uses a column in the data to figure out whether the s3 data is
 // newer than what already exists.
 func main() {
+	dir, err := osext.ExecutableFolder()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = logger.SetGlobalRouting(path.Join(dir, "kvconfig.yml"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	flag.Parse()
 
 	payloadForSignalFx = fmt.Sprintf("--schema %s", *inputSchemaName)
@@ -218,7 +246,7 @@ func main() {
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
-	supportedGranularities := map[string]bool{"hour": true, "day": true}
+	supportedGranularities := map[string]bool{"hour": true, "day": true, "stream": true}
 	if !supportedGranularities[*timeGranularity] {
 		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
@@ -227,7 +255,11 @@ func main() {
 	awsRegion, locationErr := getRegionForBucket(*inputBucket)
 	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
 	// use an custom bucket type for testablitity
-	bucket := s3filepath.S3Bucket{*inputBucket, awsRegion, awsAccessKeyID, awsSecretAccessKey}
+	bucket := s3filepath.S3Bucket{
+		Name:      *inputBucket,
+		Region:    awsRegion,
+		AccessID:  awsAccessKeyID,
+		SecretKey: awsSecretAccessKey}
 
 	timeout := 60 // can parameterize later if this is an issue
 	if host == "" {
@@ -265,7 +297,9 @@ func main() {
 		// Since lastTargetData comes from the columns, and
 		// inputConf.DataDate comes from the filename, we round to
 		// compare at the time granularity level
-		if lastTargetData != nil && (truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
+		if *timeGranularity != "stream" &&
+			lastTargetData != nil &&
+			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return

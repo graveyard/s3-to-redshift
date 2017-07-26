@@ -42,7 +42,11 @@ func TestTableFromConf(t *testing.T) {
 
 	schema, table := "testschema", "testtable"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{
+		Name:      bucket,
+		Region:    region,
+		AccessID:  accessID,
+		SecretKey: secretKey}
 
 	matchingTable := Table{
 		Name:    table,
@@ -268,7 +272,11 @@ func TestNoKeyCreateTable(t *testing.T) {
 func TestJSONCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{
+		Name:      bucket,
+		Region:    region,
+		AccessID:  accessID,
+		SecretKey: secretKey}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -326,7 +334,11 @@ func TestJSONCopy(t *testing.T) {
 func TestJSONManifestCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{
+		Name:      bucket,
+		Region:    region,
+		AccessID:  accessID,
+		SecretKey: secretKey}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -384,7 +396,11 @@ func TestTruncate(t *testing.T) {
 func TestCSVCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{
+		Name:      bucket,
+		Region:    region,
+		AccessID:  accessID,
+		SecretKey: secretKey}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -442,7 +458,11 @@ func TestCSVCopy(t *testing.T) {
 func TestCSVManifestCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
 	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
-	b := s3filepath.S3Bucket{bucket, region, accessID, secretKey}
+	b := s3filepath.S3Bucket{
+		Name:      bucket,
+		Region:    region,
+		AccessID:  accessID,
+		SecretKey: secretKey}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -468,32 +488,6 @@ func TestCSVManifestCopy(t *testing.T) {
 	tx, err := mockRedshift.Begin()
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedshift.Copy(tx, s3File, "|", true, true))
-	assert.NoError(t, tx.Commit())
-
-	if err = mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expections: %s", err)
-	}
-}
-
-func TestTruncateInTimeRange(t *testing.T) {
-	schema, table := "test_schema", "test_table"
-	granularity := "hour"
-	timeColumn := "time"
-	dateString := "2016-04-21 20:29:05"
-	dataDate, _ := time.Parse("2006-01-02 15:04:05", dateString)
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-	mockRedshift := Redshift{db}
-
-	mock.ExpectBegin()
-	mock.ExpectPrepare(fmt.Sprintf(`DELETE FROM "%s"."%s" WHERE date_trunc('%s', "time") = date_trunc('%s', timestamp '%s')`, schema, table, granularity, granularity, dateString))
-	mock.ExpectExec(`DELETE FROM ".*".".*" WHERE date_trunc\('.*', "time"\) = date_trunc\('.*', timestamp '.*'\)`).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
-	mock.ExpectCommit()
-
-	tx, err := mockRedshift.Begin()
-	assert.NoError(t, err)
-	assert.NoError(t, mockRedshift.TruncateInTimeRange(tx, schema, table, dataDate, granularity, timeColumn))
 	assert.NoError(t, tx.Commit())
 
 	if err = mock.ExpectationsWereMet(); err != nil {
