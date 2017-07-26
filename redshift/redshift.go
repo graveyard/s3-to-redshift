@@ -366,7 +366,11 @@ func checkColumn(inCol ColInfo, targetCol ColInfo) error {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Name", inCol.Name, targetCol.Name))
 	}
 	if typeMapping[inCol.Type] != targetCol.Type {
-		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
+		if strings.HasPrefix(typeMapping[inCol.Type], "character varying") && strings.HasPrefix(typeMapping[inCol.Type], "character varying") {
+			// If they are both varchars but differing values, we will ignore this
+		} else {
+			errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "Type", typeMapping[inCol.Type], targetCol.Type))
+		}
 	}
 	if inCol.DefaultVal != targetCol.DefaultVal {
 		errors = multierror.Append(errors, fmt.Errorf(mismatchedTemplate, inCol.Name, "DefaultVal", inCol.DefaultVal, targetCol.DefaultVal))
