@@ -195,7 +195,10 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 			log.Println("Submitting job to Gearman admin")
 			client := &http.Client{}
 			endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
-			payload := fmt.Sprintf(`--delete %s."%s"`, inputConf.Schema, inputTable.Name)
+
+			// N.B. We need to pass backslashes to escape the quotation marks as required
+			// by Golang's os.Args for command line arguments
+			payload := fmt.Sprintf(`--delete %s.\"%s\"`, inputConf.Schema, inputTable.Name)
 			req, err := http.NewRequest("POST", endpoint, bytes.NewReader([]byte(payload)))
 			if err != nil {
 				log.Fatalf("Error creating new request: %s", err)
