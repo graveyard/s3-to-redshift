@@ -39,14 +39,13 @@ var (
 	streamEnd       = flag.String("streamEnd", "", "The end of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
-	host               = os.Getenv("REDSHIFT_HOST")
-	port               = os.Getenv("REDSHIFT_PORT")
-	dbName             = env.MustGet("REDSHIFT_DB")
-	user               = env.MustGet("REDSHIFT_USER")
-	pwd                = env.MustGet("REDSHIFT_PASSWORD")
-	awsAccessKeyID     = env.MustGet("AWS_ACCESS_KEY_ID")
-	awsSecretAccessKey = env.MustGet("AWS_SECRET_ACCESS_KEY")
-	vacuumWorker       = env.MustGet("VACUUM_WORKER")
+	host            = os.Getenv("REDSHIFT_HOST")
+	port            = os.Getenv("REDSHIFT_PORT")
+	dbName          = env.MustGet("REDSHIFT_DB")
+	user            = env.MustGet("REDSHIFT_USER")
+	pwd             = env.MustGet("REDSHIFT_PASSWORD")
+	redshiftRoleARN = env.MustGet("REDSHIFT_ROLE_ARN")
+	vacuumWorker    = env.MustGet("VACUUM_WORKER")
 
 	// payloadForSignalFx holds a subset of the job payload that
 	// we want to alert on as a dimension in SignalFx.
@@ -259,10 +258,9 @@ func main() {
 	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
 	// use an custom bucket type for testablitity
 	bucket := s3filepath.S3Bucket{
-		Name:      *inputBucket,
-		Region:    awsRegion,
-		AccessID:  awsAccessKeyID,
-		SecretKey: awsSecretAccessKey}
+		Name:            *inputBucket,
+		Region:          awsRegion,
+		RedshiftRoleARN: redshiftRoleARN}
 
 	timeout := 60 // can parameterize later if this is an issue
 	if host == "" {
