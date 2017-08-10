@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/Clever/s3-to-redshift/s3filepath"
-	"github.com/DATA-DOG/go-sqlmock"
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	multierror "github.com/hashicorp/go-multierror"
 )
@@ -41,12 +41,11 @@ func TestTableFromConf(t *testing.T) {
 	db := Redshift{nil}
 
 	schema, table := "testschema", "testtable"
-	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
 	b := s3filepath.S3Bucket{
-		Name:      bucket,
-		Region:    region,
-		AccessID:  accessID,
-		SecretKey: secretKey}
+		Name:            bucket,
+		Region:          region,
+		RedshiftRoleARN: redshiftRoleARN}
 
 	matchingTable := Table{
 		Name:    table,
@@ -271,12 +270,11 @@ func TestNoKeyCreateTable(t *testing.T) {
 
 func TestJSONCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
-	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
 	b := s3filepath.S3Bucket{
-		Name:      bucket,
-		Region:    region,
-		AccessID:  accessID,
-		SecretKey: secretKey}
+		Name:            bucket,
+		Region:          region,
+		RedshiftRoleARN: redshiftRoleARN}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -286,9 +284,9 @@ func TestJSONCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_iam_role=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"GZIP", region, accessID, secretKey)
+		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -333,12 +331,11 @@ func TestJSONCopy(t *testing.T) {
 
 func TestJSONManifestCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
-	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
 	b := s3filepath.S3Bucket{
-		Name:      bucket,
-		Region:    region,
-		AccessID:  accessID,
-		SecretKey: secretKey}
+		Name:            bucket,
+		Region:          region,
+		RedshiftRoleARN: redshiftRoleARN}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -348,9 +345,9 @@ func TestJSONManifestCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"GZIP", region, accessID, secretKey)
+		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -395,12 +392,11 @@ func TestTruncate(t *testing.T) {
 
 func TestCSVCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
-	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
 	b := s3filepath.S3Bucket{
-		Name:      bucket,
-		Region:    region,
-		AccessID:  accessID,
-		SecretKey: secretKey}
+		Name:            bucket,
+		Region:          region,
+		RedshiftRoleARN: redshiftRoleARN}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -410,9 +406,9 @@ func TestCSVCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' DELIMITER AS '|' REMOVQUOTES ESCAPE EMPTYASNULL ACCEPTANYDATE`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVQUOTES ESCAPE EMPTYASNULL ACCEPTANYDATE`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"GZIP", region, accessID, secretKey)
+		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -457,12 +453,11 @@ func TestCSVCopy(t *testing.T) {
 
 func TestCSVManifestCopy(t *testing.T) {
 	schema, table := "testschema", "tablename"
-	bucket, region, accessID, secretKey := "bucket", "region", "accessID", "secretKey"
+	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
 	b := s3filepath.S3Bucket{
-		Name:      bucket,
-		Region:    region,
-		AccessID:  accessID,
-		SecretKey: secretKey}
+		Name:            bucket,
+		Region:          region,
+		RedshiftRoleARN: redshiftRoleARN}
 	s3File := s3filepath.S3File{
 		Bucket:   b,
 		Schema:   schema,
@@ -472,9 +467,9 @@ func TestCSVManifestCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
-		"GZIP", region, accessID, secretKey)
+		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)

@@ -20,8 +20,8 @@ export SERVICE_GEARMAN_ADMIN_HTTP_HOST ?= x
 export SERVICE_GEARMAN_ADMIN_HTTP_PORT ?= x
 export SERVICE_GEARMAN_ADMIN_HTTP_PROTO ?= x
 export AWS_REGION ?= x
-export AWS_ACCESS_KEY_ID ?= x
-export AWS_SECRET_ACCESS_KEY ?= x
+export REDSHIFT_ROLE_ARN ?= x
+
 
 all: test build
 
