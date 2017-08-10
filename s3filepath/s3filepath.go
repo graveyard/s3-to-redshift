@@ -16,10 +16,9 @@ var (
 
 // S3Bucket is our subset of the s3.Bucket class, useful for testing mostly
 type S3Bucket struct {
-	Name      string
-	Region    string
-	AccessID  string
-	SecretKey string
+	Name            string
+	Region          string
+	RedshiftRoleARN string
 }
 
 // S3File holds everything needed to run a COPY on the file

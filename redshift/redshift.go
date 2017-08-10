@@ -397,10 +397,8 @@ func checkColumn(inCol ColInfo, targetCol ColInfo) error {
 // if not using jsonPaths, set s3File.JSONPaths to "auto"
 func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds, gzip bool) error {
 	var credSQL string
-	var credArgs []interface{}
 	if creds {
-		credSQL = `CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s'`
-		credArgs = []interface{}{f.Bucket.AccessID, f.Bucket.SecretKey}
+		credSQL = fmt.Sprintf(`CREDENTIALS 'aws_iam_role=%s'`, f.Bucket.RedshiftRoleARN)
 	}
 	gzipSQL := ""
 	if gzip {
@@ -425,10 +423,9 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 	}
 	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s %s %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON %s %s %s`,
 		f.Schema, f.Table, f.GetDataFilename(), gzipSQL, jsonSQL, jsonPathsSQL, f.Bucket.Region, manifestSQL, credSQL, delimSQL)
-	fullCopySQL := fmt.Sprintf(fmt.Sprintf(copySQL, credArgs...))
 	log.Printf("Running command: %s", copySQL)
 	// can't use prepare b/c of redshift-specific syntax that postgres does not like
-	_, err := tx.Exec(fullCopySQL)
+	_, err := tx.Exec(copySQL)
 	return err
 }
 
