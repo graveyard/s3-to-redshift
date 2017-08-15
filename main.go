@@ -245,6 +245,11 @@ func main() {
 	payloadForSignalFx = fmt.Sprintf("--schema %s", *inputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
 
+	if *dataDate == "" {
+		logger.JobFinishedEvent(payloadForSignalFx, false)
+		panic("No date provided")
+	}
+
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
@@ -277,10 +282,6 @@ func main() {
 	for _, t := range strings.Split(*inputTables, ",") {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
 		// override most recent data file
-		if *dataDate == "" {
-			logger.JobFinishedEvent(payloadForSignalFx, false)
-			panic("No date provided")
-		}
 		parsedDate, err := time.Parse(time.RFC3339, *dataDate)
 		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
 		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedDate)
@@ -300,7 +301,7 @@ func main() {
 		// compare at the time granularity level
 		if *timeGranularity != "stream" &&
 			lastTargetData != nil &&
-			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
+			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(parsedDate, *timeGranularity)) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
 				return
