@@ -282,28 +282,28 @@ func main() {
 	for _, t := range strings.Split(*inputTables, ",") {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
 		// override most recent data file
-		parsedDate, err := time.Parse(time.RFC3339, *dataDate)
+		parsedInputDate, err := time.Parse(time.RFC3339, *dataDate)
 		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
-		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedDate)
+		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedInputDate)
 		fatalIfErr(err, "Issue getting data file from s3")
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")
 
 		// figure out what the current state of the table is to determine if the table is already up to date
-		targetTable, lastTargetData, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
+		targetTable, targetDataDate, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
 		if err != nil {
 			fatalIfErr(err, "Error getting existing latest table metadata") // use fatalIfErr to stay the same
 		}
 
 		// unless --force, don't update unless input data is new
-		// Since lastTargetData comes from the columns, and
+		// Since targetDataDate comes from the columns, and
 		// inputConf.DataDate comes from the filename, we round to
 		// compare at the time granularity level
 		if *timeGranularity != "stream" &&
-			lastTargetData != nil &&
-			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(parsedDate, *timeGranularity)) {
+			targetDataDate != nil &&
+			(truncateDate(*targetDataDate, *timeGranularity)).After(truncateDate(parsedInputDate, *timeGranularity)) {
 			if *force == false {
-				log.Printf("Recent data already exists in db: %s", *lastTargetData)
+				log.Printf("Recent data already exists in db: %s", *targetDataDate)
 				continue
 			}
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
