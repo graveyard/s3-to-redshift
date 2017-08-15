@@ -304,7 +304,7 @@ func main() {
 			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(parsedDate, *timeGranularity)) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *lastTargetData)
-				return
+				continue
 			}
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
