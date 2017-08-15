@@ -106,6 +106,23 @@ func truncateDate(date time.Time, granularity string) time.Time {
 	}
 }
 
+// Calculates whether or not input data (s3) is more stale than target data (Redshift)
+// Expects:
+// - inputDataDate corresponds to the s3 data timestamp of the job
+// - targetDataDate is the maximum timestamp of the DB table
+// - granularity indicating how often data snapshots are recorded in the target
+func isInputDataOlder(inputDataDate time.Time, targetDataDate *time.Time, granularity string) bool {
+	// If target table has no data, then input data is fresh by default
+	if targetDataDate == nil {
+		return false
+	}
+
+	// We truncate the timestamps to make the comparison at the correct granularity
+	// i.e. input data lagging by two hours is considered stale when granularity is hourly,
+	// but it can still be considered fresh when the granularity is daily.
+	return truncateDate(*targetDataDate, granularity).After(truncateDate(inputDataDate, granularity))
+}
+
 // getRegionForBucket looks up the region name for the given bucket
 func getRegionForBucket(name string) (string, error) {
 	// Any region will work for the region lookup, but the request MUST use
@@ -296,12 +313,7 @@ func main() {
 		}
 
 		// unless --force, don't update unless input data is new
-		// Since targetDataDate comes from the columns, and
-		// inputConf.DataDate comes from the filename, we round to
-		// compare at the time granularity level
-		if *timeGranularity != "stream" &&
-			targetDataDate != nil &&
-			(truncateDate(*targetDataDate, *timeGranularity)).After(truncateDate(parsedInputDate, *timeGranularity)) {
+		if *timeGranularity != "stream" && isInputDataOlder(parsedInputDate, targetDataDate, *timeGranularity) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *targetDataDate)
 				continue
