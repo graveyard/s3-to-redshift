@@ -217,7 +217,7 @@ func startEndFromGranularity(t time.Time, granularity string) (time.Time, time.T
 	if granularity == "day" {
 		duration = time.Hour * 24
 	} else {
-		duration = time.Hour * 24 * 7
+		duration = time.Hour
 	}
 
 	start := t.UTC().Truncate(duration)
