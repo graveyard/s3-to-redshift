@@ -37,6 +37,7 @@ var (
 	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
 	streamStart     = flag.String("streamStart", "", "The start of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
 	streamEnd       = flag.String("streamEnd", "", "The end of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
+	targetTimezone  = flag.String("timezone", "UTC", "Specifies what timezone the target data is in.")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host            = os.Getenv("REDSHIFT_HOST")
@@ -111,11 +112,20 @@ func truncateDate(date time.Time, granularity string) time.Time {
 // - inputDataDate corresponds to the s3 data timestamp of the job
 // - targetDataDate is the maximum timestamp of the DB table
 // - granularity indicating how often data snapshots are recorded in the target
-func isInputDataOlder(inputDataDate time.Time, targetDataDate *time.Time, granularity string) bool {
+func isInputDataStale(inputDataDate time.Time, targetDataDate *time.Time,
+	granularity string, targetDataLoc *time.Location,
+) bool {
 	// If target table has no data, then input data is fresh by default
 	if targetDataDate == nil {
 		return false
 	}
+
+	// Handle comparison for target data in a different time zone (ex. PT)
+	_, offsetSec := targetDataDate.In(targetDataLoc).Zone()
+	offsetDuration, err := time.ParseDuration(fmt.Sprintf("%vs", -1*offsetSec))
+	fatalIfErr(err, "isInputDataStale was unable to parse offset duration")
+
+	*targetDataDate = targetDataDate.Add(offsetDuration)
 
 	// We truncate the timestamps to make the comparison at the correct granularity
 	// i.e. input data lagging by two hours is considered stale when granularity is hourly,
@@ -276,6 +286,10 @@ func main() {
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
 	}
 
+	// verify that targetTimezone is a supported Golang location (i.e. "America/Los_Angeles")
+	targetDataLocation, err := time.LoadLocation(*targetTimezone)
+	fatalIfErr(err, fmt.Sprintf("unable to load timezone '%s'", *targetTimezone))
+
 	awsRegion, locationErr := getRegionForBucket(*inputBucket)
 	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
 	// use an custom bucket type for testablitity
@@ -313,7 +327,7 @@ func main() {
 		}
 
 		// unless --force, don't update unless input data is new
-		if *timeGranularity != "stream" && isInputDataOlder(parsedInputDate, targetDataDate, *timeGranularity) {
+		if *timeGranularity != "stream" && isInputDataStale(parsedInputDate, targetDataDate, *timeGranularity, targetDataLocation) {
 			if *force == false {
 				log.Printf("Recent data already exists in db: %s", *targetDataDate)
 				continue
