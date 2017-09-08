@@ -51,6 +51,7 @@ See the Makefile for a complete list of parameters you can use for testing.
 - `config`: override of the usual auto-discovery of the config
 - `delimiter`: required to use CSV files, what the file is delimited in (likely use the '|' pipe character as that is AWS' default). If `""` then JSON copy is assumed
 - `granularity`: how often we expect to append new data for each table (i.e. daily, or hourly buckets)
+- `timezone`: specifies what timezone the target data is in (i.e. 'America/Los_Angeles'). Must be in the IANA Time Zone database.
 
 #### Note on general usage:
 

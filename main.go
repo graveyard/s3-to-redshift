@@ -37,6 +37,7 @@ var (
 	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
 	streamStart     = flag.String("streamStart", "", "The start of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
 	streamEnd       = flag.String("streamEnd", "", "The end of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
+	targetTimezone  = flag.String("timezone", "UTC", "Specifies what timezone the target data is in.")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host            = os.Getenv("REDSHIFT_HOST")
@@ -106,6 +107,32 @@ func truncateDate(date time.Time, granularity string) time.Time {
 	}
 }
 
+// Calculates whether or not input data (s3) is more stale than target data (Redshift)
+// Expects:
+// - inputDataDate corresponds to the s3 data timestamp of the job
+// - targetDataDate is the maximum timestamp of the DB table
+// - granularity indicating how often data snapshots are recorded in the target
+func isInputDataStale(inputDataDate time.Time, targetDataDate *time.Time,
+	granularity string, targetDataLoc *time.Location,
+) bool {
+	// If target table has no data, then input data is fresh by default
+	if targetDataDate == nil {
+		return false
+	}
+
+	// Handle comparison for target data in a different time zone (ex. PT)
+	_, offsetSec := targetDataDate.In(targetDataLoc).Zone()
+	offsetDuration, err := time.ParseDuration(fmt.Sprintf("%vs", -1*offsetSec))
+	fatalIfErr(err, "isInputDataStale was unable to parse offset duration")
+
+	*targetDataDate = targetDataDate.Add(offsetDuration)
+
+	// We truncate the timestamps to make the comparison at the correct granularity
+	// i.e. input data lagging by two hours is considered stale when granularity is hourly,
+	// but it can still be considered fresh when the granularity is daily.
+	return truncateDate(*targetDataDate, granularity).After(truncateDate(inputDataDate, granularity))
+}
+
 // getRegionForBucket looks up the region name for the given bucket
 func getRegionForBucket(name string) (string, error) {
 	// Any region will work for the region lookup, but the request MUST use
@@ -159,7 +186,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 				return err
 			}
 		} else {
-			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity)
+			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity, *targetTimezone)
 		}
 		// To prevent duplicates, clear away any existing data within a certain time range as the data date
 		// (that is, sharing the same data date up to a certain time granularity)
@@ -212,12 +239,25 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	return nil
 }
 
-func startEndFromGranularity(t time.Time, granularity string) (time.Time, time.Time) {
+func startEndFromGranularity(t time.Time, granularity string, targetTimezone string) (time.Time, time.Time) {
+	// Rotate time if in PT
+	fmt.Println(targetTimezone)
+	if targetTimezone != "UTC" {
+		ptLoc, err := time.LoadLocation(targetTimezone)
+		fatalIfErr(err, "startEndFromGranularity was unable to load timezone")
+
+		_, ptOffsetSec := t.In(ptLoc).Zone()
+		ptOffsetDuration, err := time.ParseDuration(fmt.Sprintf("%vs", ptOffsetSec))
+		fatalIfErr(err, "startEndFromGranularity was unable to parse offset duration")
+
+		t = t.Add(ptOffsetDuration)
+	}
+
 	var duration time.Duration
 	if granularity == "day" {
 		duration = time.Hour * 24
 	} else {
-		duration = time.Hour * 24 * 7
+		duration = time.Hour
 	}
 
 	start := t.UTC().Truncate(duration)
@@ -245,6 +285,11 @@ func main() {
 	payloadForSignalFx = fmt.Sprintf("--schema %s", *inputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
 
+	if *dataDate == "" {
+		logger.JobFinishedEvent(payloadForSignalFx, false)
+		panic("No date provided")
+	}
+
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
@@ -253,6 +298,10 @@ func main() {
 		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
 	}
+
+	// verify that targetTimezone is a supported Golang location (i.e. "America/Los_Angeles")
+	targetDataLocation, err := time.LoadLocation(*targetTimezone)
+	fatalIfErr(err, fmt.Sprintf("unable to load timezone '%s'", *targetTimezone))
 
 	awsRegion, locationErr := getRegionForBucket(*inputBucket)
 	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
@@ -277,33 +326,24 @@ func main() {
 	for _, t := range strings.Split(*inputTables, ",") {
 		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
 		// override most recent data file
-		if *dataDate == "" {
-			logger.JobFinishedEvent(payloadForSignalFx, false)
-			panic("No date provided")
-		}
-		parsedDate, err := time.Parse(time.RFC3339, *dataDate)
+		parsedInputDate, err := time.Parse(time.RFC3339, *dataDate)
 		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
-		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedDate)
+		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedInputDate)
 		fatalIfErr(err, "Issue getting data file from s3")
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")
 
 		// figure out what the current state of the table is to determine if the table is already up to date
-		targetTable, lastTargetData, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
+		targetTable, targetDataDate, err := db.GetTableMetadata(inputConf.Schema, inputConf.Table, inputTable.Meta.DataDateColumn)
 		if err != nil {
 			fatalIfErr(err, "Error getting existing latest table metadata") // use fatalIfErr to stay the same
 		}
 
 		// unless --force, don't update unless input data is new
-		// Since lastTargetData comes from the columns, and
-		// inputConf.DataDate comes from the filename, we round to
-		// compare at the time granularity level
-		if *timeGranularity != "stream" &&
-			lastTargetData != nil &&
-			(truncateDate(*lastTargetData, *timeGranularity)).After(truncateDate(inputConf.DataDate, *timeGranularity)) {
+		if *timeGranularity != "stream" && isInputDataStale(parsedInputDate, targetDataDate, *timeGranularity, targetDataLocation) {
 			if *force == false {
-				log.Printf("Recent data already exists in db: %s", *lastTargetData)
-				return
+				log.Printf("Recent data already exists in db: %s", *targetDataDate)
+				continue
 			}
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
