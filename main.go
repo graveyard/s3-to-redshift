@@ -186,7 +186,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 				return err
 			}
 		} else {
-			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity)
+			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity, *targetTimezone)
 		}
 		// To prevent duplicates, clear away any existing data within a certain time range as the data date
 		// (that is, sharing the same data date up to a certain time granularity)
@@ -239,7 +239,20 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 	return nil
 }
 
-func startEndFromGranularity(t time.Time, granularity string) (time.Time, time.Time) {
+func startEndFromGranularity(t time.Time, granularity string, targetTimezone string) (time.Time, time.Time) {
+	// Rotate time if in PT
+	fmt.Println(targetTimezone)
+	if targetTimezone != "UTC" {
+		ptLoc, err := time.LoadLocation(targetTimezone)
+		fatalIfErr(err, "startEndFromGranularity was unable to load timezone")
+
+		_, ptOffsetSec := t.In(ptLoc).Zone()
+		ptOffsetDuration, err := time.ParseDuration(fmt.Sprintf("%vs", ptOffsetSec))
+		fatalIfErr(err, "startEndFromGranularity was unable to parse offset duration")
+
+		t = t.Add(ptOffsetDuration)
+	}
+
 	var duration time.Duration
 	if granularity == "day" {
 		duration = time.Hour * 24

@@ -10,13 +10,24 @@ import (
 func TestTimeGranularity(t *testing.T) {
 	baseTime := time.Date(2017, 7, 11, 12, 9, 0, 0, time.UTC)
 
-	start, end := startEndFromGranularity(baseTime, "day")
+	start, end := startEndFromGranularity(baseTime, "day", false)
 	assert.Equal(t, start, time.Date(2017, 7, 11, 0, 0, 0, 0, time.UTC))
 	assert.Equal(t, end, time.Date(2017, 7, 12, 0, 0, 0, 0, time.UTC))
 
-	start, end = startEndFromGranularity(baseTime, "hour")
+	start, end = startEndFromGranularity(baseTime, "hour", false)
 	assert.Equal(t, start, time.Date(2017, 7, 11, 12, 0, 0, 0, time.UTC))
 	assert.Equal(t, end, time.Date(2017, 7, 11, 13, 0, 0, 0, time.UTC))
+
+	// Simulate timestamps that cross timezones in PT vs UTC
+	baseTime = time.Date(2017, 7, 11, 4, 0, 0, 0, time.UTC)
+
+	start, end = startEndFromGranularity(baseTime, "day", false)
+	assert.Equal(t, start, time.Date(2017, 7, 11, 0, 0, 0, 0, time.UTC))
+	assert.Equal(t, end, time.Date(2017, 7, 12, 0, 0, 0, 0, time.UTC))
+
+	start, end = startEndFromGranularity(baseTime, "day", true)
+	assert.Equal(t, start, time.Date(2017, 7, 10, 0, 0, 0, 0, time.UTC))
+	assert.Equal(t, end, time.Date(2017, 7, 11, 0, 0, 0, 0, time.UTC))
 }
 
 func TestIsInputDataStale(t *testing.T) {
