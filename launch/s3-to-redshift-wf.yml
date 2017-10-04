@@ -1,5 +1,5 @@
 run:
-  type: workflow
+  type: docker
 use_iam_roles: true
 env:
 - AWS_REGION

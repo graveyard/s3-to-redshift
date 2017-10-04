@@ -1,3 +1,4 @@
+include sfncli.mk
 include golang.mk
 .DEFAULT_GOAL := test # override default goal set in library makefile
 
@@ -6,7 +7,8 @@ SHELL := /bin/bash
 PKG := github.com/Clever/s3-to-redshift
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
-$(eval $(call golang-version-check,1.8))
+$(eval $(call golang-version-check,1.9))
+SFNCLI_VERSION := latest
 
 # variables for testing
 export GEARMAN_ADMIN_PATH ?= x
@@ -29,7 +31,7 @@ clean:
 	rm -f $(GOPATH)/src/$(PKG)/bin/$(EXECUTABLE)
 	rm -f $(GOPATH)/src/$(PKG)/bin/kvconfig.yml
 
-build: clean
+build: clean bin/sfncli
 	go build -o bin/$(EXECUTABLE) $(PKG)
 	cp kvconfig.yml bin/kvconfig.yml
 
