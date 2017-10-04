@@ -50,7 +50,16 @@ export TRUNCATE ?= false
 export GZIP ?= true
 
 run: build
+	bin/sfncli --activityname $(_DEPLOY_ENV)--$(_APP_NAME) \
+	  --region us-west-2 \
+	  --workername `hostname` \
+	  --cmd ./build/$(EXECUTABLE)
+
+run-cli: build
 	./bin/$(EXECUTABLE) --bucket $(S3_BUCKET) --schema $(SCHEMA) --tables $(TABLES) --date $(DATE) --granularity $(GRANULARITY) --force=$(FORCE) --truncate=$(TRUNCATE) --gzip=$(GZIP)
 
-vendor: golang-godep-vendor-deps
-	$(call golang-godep-vendor,$(PKGS))
+$(GOPATH)/bin/glide:
+	@go get github.com/Masterminds/glide
+
+install_deps: $(GOPATH)/bin/glide
+	@$(GOPATH)/bin/glide install

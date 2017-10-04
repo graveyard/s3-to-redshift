@@ -1,0 +1,74 @@
+package: github.com/Clever/s3-to-redshift
+import:
+- package: github.com/Clever/pathio
+  version: c9ab5faa09d73e85523f3540db96295eef381a91
+- package: github.com/Clever/pq
+  version: 84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45
+- package: github.com/DATA-DOG/go-sqlmock
+  version: 081a694b0af16f86d406ac2832433a98a6fa625a
+- package: github.com/aws/aws-sdk-go
+  version: 2c0ef11c03b8f28d694021d4a6bda2e24b040cd4
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/endpoints
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - private/protocol
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/restxml
+  - private/protocol/xml/xmlutil
+  - service/s3
+  - service/sts
+  - vendor/github.com/go-ini/ini
+  - vendor/github.com/jmespath/go-jmespath
+- package: github.com/hashicorp/errwrap
+  version: 7554cd9344cec97297fa6649b055a8c98c2a1e55
+- package: github.com/hashicorp/go-multierror
+  version: ed905158d87462226a13fe39ddf685ea65f1c11f
+- package: github.com/go-ini/ini
+  version: 2e44421e256d82ebbf3d4d4fcabe8930b905eff3
+- package: github.com/jmespath/go-jmespath
+  version: 3433f3ea46d9f8019119e7dd41274e112a2359a9
+- package: github.com/kardianos/osext
+  version: c2c54e542fb797ad986b31721e1baedf214ca413
+- package: github.com/lib/pq
+  version: 8ad2b298cadd691a77015666a5372eae5dbfac8f
+  subpackages:
+  - oid
+- package: github.com/segmentio/go-env
+  version: 7c67b4ee2d8065b4238c1fcc7a520fd0f79feefc
+- package: github.com/stretchr/testify
+  version: b8dc1cecf15bdaf1988d9e87aa7cd98d899a06d6
+  subpackages:
+  - assert
+- package: github.com/xeipuuv/gojsonpointer
+  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
+- package: github.com/xeipuuv/gojsonreference
+  version: e02fc20de94c78484cd5ffb007f8af96be030a45
+- package: github.com/xeipuuv/gojsonschema
+  version: 59f99ebfe5f712a0055e321231fc3be94e4e00b2
+- package: gopkg.in/Clever/kayvee-go.v6
+  version: fa278c9c7f83580b15c163c1efffe6fb4f2e3989
+  subpackages:
+  - logger
+  - router
+- package: gopkg.in/yaml.v2
+  version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
+- package: github.com/Clever/configure
+  version: ~1.0.0
+- package: github.com/Clever/discovery-go
+  version: ~1.7.1
