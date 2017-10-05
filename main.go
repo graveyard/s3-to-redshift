@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -296,4 +297,14 @@ func main() {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
 	log.Println("done with full run")
+
+	// Workflows support: After we snapshot historical building blocks,
+	// kick off view-materializer for the historical table
+	payload := map[string]interface{}{
+		"inputSchema":  "historical",
+		"outputSchema": "historical_materialized",
+		"input":        "managed_test_day",
+	}
+	output, err := json.Marshal(payload)
+	fmt.Println(string(output))
 }
