@@ -67,7 +67,7 @@ func Parse() {
 		InputSchemaName: "mongo",
 		InputBucket:     "metrics",
 		Truncate:        false,
-		Gzip:            true, // TODO: currently this can not be set to false
+		Gzip:            true,
 		TargetTimezone:  "UTC",
 	}
 	if err := configure.Configure(&argConfig); err != nil {
