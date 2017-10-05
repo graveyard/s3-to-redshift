@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/Clever/configure"
 	discovery "github.com/Clever/discovery-go"
@@ -73,9 +72,6 @@ func Parse() {
 	if err := configure.Configure(&argConfig); err != nil {
 		log.Fatalf("err: %#v", err)
 	}
-
-	fmt.Printf("%+v\n", argConfig)
-	os.Exit(1)
 
 	// copy flags to config package vars
 	InputSchemaName = argConfig.InputSchemaName
