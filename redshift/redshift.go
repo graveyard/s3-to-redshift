@@ -319,7 +319,7 @@ func checkColumnsAndOrdering(inputTable, targetTable Table) ([]string, error) {
 
 	for idx, inCol := range inputTable.Columns {
 		if len(targetTable.Columns) <= idx {
-			fmt.Printf("Missing column -- running alter table\n")
+			log.Printf("Missing column -- running alter table\n")
 			alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" ADD COLUMN %s`, targetTable.Meta.Schema, targetTable.Name, getColumnSQL(inCol))
 			columnOps = append(columnOps, alterSQL)
 			continue
@@ -350,7 +350,7 @@ func checkColumnsWithoutOrdering(inputTable, targetTable Table) ([]string, error
 			}
 		}
 		if !foundMatching {
-			fmt.Printf("Missing column -- running alter table\n")
+			log.Printf("Missing column -- running alter table\n")
 			alterSQL := fmt.Sprintf(`ALTER TABLE "%s"."%s" ADD COLUMN %s`,
 				targetTable.Meta.Schema, targetTable.Name, getColumnSQL(inCol))
 			columnOps = append(columnOps, alterSQL)

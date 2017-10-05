@@ -184,7 +184,7 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 
 func startEndFromGranularity(t time.Time, granularity string, targetTimezone string) (time.Time, time.Time) {
 	// Rotate time if in PT
-	fmt.Println(targetTimezone)
+	log.Println(targetTimezone)
 	if targetTimezone != "UTC" {
 		ptLoc, err := time.LoadLocation(targetTimezone)
 		fatalIfErr(err, "startEndFromGranularity was unable to load timezone")
