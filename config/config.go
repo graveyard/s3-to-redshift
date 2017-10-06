@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/Clever/configure"
 	discovery "github.com/Clever/discovery-go"
@@ -27,13 +28,13 @@ var (
 
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
-	Host            string //= os.Getenv("REDSHIFT_HOST")
-	Port            string //= os.Getenv("REDSHIFT_PORT")
-	DbName          string //= env.MustGet("REDSHIFT_DB")
-	User            string //= env.MustGet("REDSHIFT_USER")
-	Pwd             string //= env.MustGet("REDSHIFT_PASSWORD")
-	RedshiftRoleARN string //= env.MustGet("REDSHIFT_ROLE_ARN")
-	VacuumWorker    string //= env.MustGet("VACUUM_WORKER")
+	Host            = os.Getenv("REDSHIFT_HOST")
+	Port            = os.Getenv("REDSHIFT_PORT")
+	DbName          = env.MustGet("REDSHIFT_DB")
+	User            = env.MustGet("REDSHIFT_USER")
+	Pwd             = env.MustGet("REDSHIFT_PASSWORD")
+	RedshiftRoleARN = env.MustGet("REDSHIFT_ROLE_ARN")
+	VacuumWorker    = env.MustGet("VACUUM_WORKER")
 
 	// payloadForSignalFx holds a subset of the job payload that
 	// we want to alert on as a dimension in SignalFx.
