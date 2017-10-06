@@ -303,7 +303,8 @@ func main() {
 	payload := map[string]interface{}{
 		"inputSchema":  "historical",
 		"outputSchema": "historical_materialized",
-		"inputs":       "managed_test_day",
+		"input":        config.InputTables,
+		"granularity":  config.TimeGranularity,
 	}
 	output, err := json.Marshal(payload)
 	fmt.Println(string(output))
