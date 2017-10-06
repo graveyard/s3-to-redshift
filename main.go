@@ -303,7 +303,7 @@ func main() {
 	payload := map[string]interface{}{
 		"inputSchema":  "historical",
 		"outputSchema": "historical_materialized",
-		"input":        "managed_test_day",
+		"inputs":       "managed_test_day",
 	}
 	output, err := json.Marshal(payload)
 	fmt.Println(string(output))
