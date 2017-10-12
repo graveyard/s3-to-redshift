@@ -1,0 +1,76 @@
+hash: 959ed4d4c8bfe69d7d5200dbe5f509dcc6789f0c00f2fb4dd96429a0dfcb9f25
+updated: 2017-10-05T05:29:00.209790745Z
+imports:
+- name: github.com/aws/aws-sdk-go
+  version: 2c0ef11c03b8f28d694021d4a6bda2e24b040cd4
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/endpoints
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - private/protocol
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/restxml
+  - private/protocol/xml/xmlutil
+  - service/s3
+  - service/sts
+  - vendor/github.com/go-ini/ini
+  - vendor/github.com/jmespath/go-jmespath
+- name: github.com/Clever/configure
+  version: e62cf1715b47d2ea5f09b5c8f04facecfdedcaf2
+- name: github.com/Clever/discovery-go
+  version: b2114f3bdf1c55f030cf6d6d457478ccb18b9e9c
+- name: github.com/Clever/pathio
+  version: c9ab5faa09d73e85523f3540db96295eef381a91
+- name: github.com/Clever/pq
+  version: 84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45
+- name: github.com/DATA-DOG/go-sqlmock
+  version: 081a694b0af16f86d406ac2832433a98a6fa625a
+- name: github.com/go-ini/ini
+  version: 2e44421e256d82ebbf3d4d4fcabe8930b905eff3
+- name: github.com/hashicorp/errwrap
+  version: 7554cd9344cec97297fa6649b055a8c98c2a1e55
+- name: github.com/hashicorp/go-multierror
+  version: ed905158d87462226a13fe39ddf685ea65f1c11f
+- name: github.com/jmespath/go-jmespath
+  version: 3433f3ea46d9f8019119e7dd41274e112a2359a9
+- name: github.com/kardianos/osext
+  version: c2c54e542fb797ad986b31721e1baedf214ca413
+- name: github.com/lib/pq
+  version: 8ad2b298cadd691a77015666a5372eae5dbfac8f
+  subpackages:
+  - oid
+- name: github.com/segmentio/go-env
+  version: 7c67b4ee2d8065b4238c1fcc7a520fd0f79feefc
+- name: github.com/stretchr/testify
+  version: b8dc1cecf15bdaf1988d9e87aa7cd98d899a06d6
+  subpackages:
+  - assert
+- name: github.com/xeipuuv/gojsonpointer
+  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
+- name: github.com/xeipuuv/gojsonreference
+  version: e02fc20de94c78484cd5ffb007f8af96be030a45
+- name: github.com/xeipuuv/gojsonschema
+  version: 59f99ebfe5f712a0055e321231fc3be94e4e00b2
+- name: gopkg.in/Clever/kayvee-go.v6
+  version: fa278c9c7f83580b15c163c1efffe6fb4f2e3989
+  subpackages:
+  - logger
+  - router
+- name: gopkg.in/yaml.v2
+  version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
+testImports: []

@@ -1,3 +1,4 @@
+include sfncli.mk
 include golang.mk
 .DEFAULT_GOAL := test # override default goal set in library makefile
 
@@ -6,7 +7,8 @@ SHELL := /bin/bash
 PKG := github.com/Clever/s3-to-redshift
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
-$(eval $(call golang-version-check,1.8))
+$(eval $(call golang-version-check,1.9))
+SFNCLI_VERSION := latest
 
 # variables for testing
 export GEARMAN_ADMIN_PATH ?= x
@@ -29,7 +31,7 @@ clean:
 	rm -f $(GOPATH)/src/$(PKG)/bin/$(EXECUTABLE)
 	rm -f $(GOPATH)/src/$(PKG)/bin/kvconfig.yml
 
-build: clean
+build: clean bin/sfncli
 	go build -o bin/$(EXECUTABLE) $(PKG)
 	cp kvconfig.yml bin/kvconfig.yml
 
@@ -48,7 +50,16 @@ export TRUNCATE ?= false
 export GZIP ?= true
 
 run: build
+	bin/sfncli --activityname $(_DEPLOY_ENV)--$(_APP_NAME) \
+	  --region us-west-2 \
+	  --workername `hostname` \
+	  --cmd ./build/$(EXECUTABLE)
+
+run-cli: build
 	./bin/$(EXECUTABLE) --bucket $(S3_BUCKET) --schema $(SCHEMA) --tables $(TABLES) --date $(DATE) --granularity $(GRANULARITY) --force=$(FORCE) --truncate=$(TRUNCATE) --gzip=$(GZIP)
 
-vendor: golang-godep-vendor-deps
-	$(call golang-godep-vendor,$(PKGS))
+$(GOPATH)/bin/glide:
+	@go get github.com/Masterminds/glide
+
+install_deps: $(GOPATH)/bin/glide
+	@$(GOPATH)/bin/glide install
