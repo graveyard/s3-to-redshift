@@ -311,13 +311,26 @@ func main() {
 }
 
 // getHistoricalViewNames is needed since we have inconsistent naming between our historical tables,
-// and historical_managed views. We want to materialize historical_managed views, thus this hacky workaround
+// and historical_managed views. We want to materialize historical_managed views, thus this mapping.
 func getHistoricalViewNames(historicalTables string) string {
 	var result []string
+	tableMapping := map[string]string{
+		"managed_all_district_app_connection_vw_day":        "all_district_app_connections_by_day_vw",
+		"managed_paid_active_school_app_connection_vw_day ": "paid_active_school_app_connections_by_day_vw",
+		"managed_all_school_app_connection_vw_day":          "all_school_app_connections_by_day_vw",
+		"managed_district_app_connection_vw_day":            "district_app_connections_by_day_vw",
+		"managed_paid_active_schools_vw_day":                "paid_active_schools_by_day_vw",
+		"managed_app_vw_day":                                "apps_by_day_vw",
+		"managed_district_portal_adoption_vw_day":           "district_portal_adoption_by_day_vw",
+		"managed_school_portal_adoption_vw_day":             "school_portal_adoption_by_day_vw",
+		"managed_district_vw_day ":                          "districts_by_day_vw",
+	}
 	for _, t := range strings.Split(historicalTables, ",") {
-		table := strings.Split(t, "_")
-		fmt.Println(table)
-		viewName := fmt.Sprintf("%ss_by_%s_vw", strings.Join(table[1:len(table)-2], "_"), table[len(table)-1])
+
+		viewName, ok := tableMapping[t]
+		if !ok {
+			viewName = t
+		}
 		result = append(result, viewName)
 
 	}
