@@ -303,9 +303,23 @@ func main() {
 	payload := map[string]interface{}{
 		"inputSchema":  "historical",
 		"outputSchema": "historical_materialized",
-		"inputs":       config.InputTables,
+		"inputs":       getHistoricalViewNames(config.InputTables),
 		"granularity":  config.TimeGranularity,
 	}
 	output, err := json.Marshal(payload)
 	fmt.Println(string(output))
+}
+
+// getHistoricalViewNames is needed since we have inconsistent naming between our historical tables,
+// and historical_managed views. We want to materialize historical_managed views, thus this hacky workaround
+func getHistoricalViewNames(historicalTables string) string {
+	var result []string
+	for _, t := range strings.Split(historicalTables, ",") {
+		table := strings.Split(t, "_")
+		fmt.Println(table)
+		viewName := fmt.Sprintf("%ss_by_%s_vw", strings.Join(table[1:len(table)-2], "_"), table[len(table)-1])
+		result = append(result, viewName)
+
+	}
+	return strings.Join(result, ",")
 }
