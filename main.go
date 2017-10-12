@@ -301,7 +301,7 @@ func main() {
 	// Workflows support: After we snapshot historical building blocks,
 	// kick off view-materializer for the historical table
 	payload := map[string]interface{}{
-		"inputSchema":  "historical",
+		"inputSchema":  "historical_managed",
 		"outputSchema": "historical_materialized",
 		"inputs":       getHistoricalViewNames(config.InputTables),
 		"granularity":  config.TimeGranularity,
