@@ -315,15 +315,15 @@ func main() {
 func getHistoricalViewNames(historicalTables string) string {
 	var result []string
 	tableMapping := map[string]string{
-		"managed_all_district_app_connection_vw_day":        "all_district_app_connections_by_day_vw",
-		"managed_paid_active_school_app_connection_vw_day ": "paid_active_school_app_connections_by_day_vw",
-		"managed_all_school_app_connection_vw_day":          "all_school_app_connections_by_day_vw",
-		"managed_district_app_connection_vw_day":            "district_app_connections_by_day_vw",
-		"managed_paid_active_schools_vw_day":                "paid_active_schools_by_day_vw",
-		"managed_app_vw_day":                                "apps_by_day_vw",
-		"managed_district_portal_adoption_vw_day":           "district_portal_adoption_by_day_vw",
-		"managed_school_portal_adoption_vw_day":             "school_portal_adoption_by_day_vw",
-		"managed_district_vw_day ":                          "districts_by_day_vw",
+		"managed_all_district_app_connection_vw_day":       "all_district_app_connections_by_day_vw",
+		"managed_paid_active_school_app_connection_vw_day": "paid_active_school_app_connections_by_day_vw",
+		"managed_all_school_app_connection_vw_day":         "all_school_app_connections_by_day_vw",
+		"managed_district_app_connection_vw_day":           "district_app_connections_by_day_vw",
+		"managed_paid_active_schools_vw_day":               "paid_active_schools_by_day_vw",
+		"managed_app_vw_day":                               "apps_by_day_vw",
+		"managed_district_portal_adoption_vw_day":          "district_portal_adoption_by_day_vw",
+		"managed_school_portal_adoption_vw_day":            "school_portal_adoption_by_day_vw",
+		"managed_district_vw_day":                          "districts_by_day_vw",
 	}
 	for _, t := range strings.Split(historicalTables, ",") {
 
