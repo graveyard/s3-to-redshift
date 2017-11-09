@@ -6,7 +6,7 @@ SHELL := /bin/bash
 PKG := github.com/Clever/s3-to-redshift
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
-$(eval $(call golang-version-check,1.8))
+$(eval $(call golang-version-check,1.9))
 
 # variables for testing
 export GEARMAN_ADMIN_PATH ?= x
@@ -50,5 +50,7 @@ export GZIP ?= true
 run: build
 	./bin/$(EXECUTABLE) --bucket $(S3_BUCKET) --schema $(SCHEMA) --tables $(TABLES) --date $(DATE) --granularity $(GRANULARITY) --force=$(FORCE) --truncate=$(TRUNCATE) --gzip=$(GZIP)
 
-vendor: golang-godep-vendor-deps
-	$(call golang-godep-vendor,$(PKGS))
+
+
+install_deps: golang-dep-vendor-deps
+	$(call golang-dep-vendor)
