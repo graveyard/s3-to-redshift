@@ -13,6 +13,6 @@ COPY bin/s3-to-redshift /usr/bin/s3-to-redshift
 CMD exec gearcmd \
   --name ${WORKER_NAME} \
   --cmd s3-to-redshift \
-  --cmdtimeout 30m \
+  --cmdtimeout 120m \
   --retry 1 \
   --warningLength 20
