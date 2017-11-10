@@ -21,10 +21,6 @@ We are trying to minimize the amount of work to add or modify data going into `R
 - Modifying the destination `Redshift` tables, if necessary
 - Refreshing the latest `Redshift` data (see: the `granularity` flag) by efficiently loading s3 data using the `COPY` command
 
-## Deploying
-
-This is a standard mesos deploy, `ark start -e production s3-to-redshift`
-
 ## Running
 
 We split up environment variables and command line flags based on realistic ways one might run this in production.
