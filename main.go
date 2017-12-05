@@ -312,6 +312,7 @@ func main() {
 
 // getHistoricalViewNames is needed since we have inconsistent naming between our historical tables,
 // and historical_managed views. We want to materialize historical_managed views, thus this mapping.
+// We also ignore some views that we don't materialize
 func getHistoricalViewNames(historicalTables string) string {
 	var result []string
 	tableMapping := map[string]string{
@@ -325,11 +326,17 @@ func getHistoricalViewNames(historicalTables string) string {
 		"managed_school_portal_adoption_vw_day":            "school_portal_adoption_by_day_vw",
 		"managed_district_vw_day":                          "districts_by_day_vw",
 	}
+	tablesToIgnore := map[string]struct{}{
+		"managed_customer_billing_vw_day": struct{}{},
+	}
 	for _, t := range strings.Split(historicalTables, ",") {
 
 		viewName, ok := tableMapping[t]
 		if !ok {
 			viewName = t
+		}
+		if _, ok := tablesToIgnore[t]; ok {
+			continue
 		}
 		result = append(result, viewName)
 
