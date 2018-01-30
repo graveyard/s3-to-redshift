@@ -209,13 +209,19 @@ func runCopy(
 			log.Fatalf("Unable to post vacuum job to %s", vacuumWorker)
 		} else {
 			log.Println("Submitting job to Gearman admin")
-			client := &http.Client{}
-			endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
 
 			// N.B. We need to pass backslashes to escape the quotation marks as required
 			// by Golang's os.Args for command line arguments
-			payload := fmt.Sprintf(`--delete %s.\"%s\"`, inputConf.Schema, inputTable.Name)
-			req, err := http.NewRequest("POST", endpoint, bytes.NewReader([]byte(payload)))
+			payload, err := json.Marshal(map[string]string{
+				"delete": inputConf.Schema + `."` + inputTable.Name + `"`,
+			})
+			if err != nil {
+				log.Fatalf("Error creating new payload: %s", err)
+			}
+
+			client := &http.Client{}
+			endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
+			req, err := http.NewRequest("POST", endpoint, bytes.NewReader(payload))
 			if err != nil {
 				log.Fatalf("Error creating new request: %s", err)
 			}
