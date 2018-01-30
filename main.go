@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"flag"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Clever/configure"
 	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
@@ -24,20 +25,6 @@ import (
 )
 
 var (
-	// things we are likely to change when running the worker normally are flags
-	inputSchemaName = flag.String("schema", "mongo", "what target schema we load into")
-	inputTables     = flag.String("tables", "", "target tables to run on, comma separated")
-	inputBucket     = flag.String("bucket", "metrics", "bucket to load from, not including s3:// protocol")
-	truncate        = flag.Bool("truncate", false, "do we truncate the table before inserting")
-	force           = flag.Bool("force", false, "do we refresh the data even if it's already handled?")
-	dataDate        = flag.String("date", "", "data date we should process, must be full RFC3339")
-	configFile      = flag.String("config", "", "schema & table config to use in YAML format")
-	gzip            = flag.Bool("gzip", true, "whether target files are gzipped, defaults to true")
-	delimiter       = flag.String("delimiter", "", "delimiter for CSV files, usually pipe character. If empty then JSON will be assumed.")
-	timeGranularity = flag.String("granularity", "day", "how often we expect to append new data")
-	streamStart     = flag.String("streamStart", "", "The start of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
-	streamEnd       = flag.String("streamEnd", "", "The end of the streamed data. Only used if granularity='stream'. Used to ensure idempotency")
-	targetTimezone  = flag.String("timezone", "UTC", "Specifies what timezone the target data is in.")
 	// things which will would strongly suggest launching as a second worker are env vars
 	// also the secrets ... shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 	host            = os.Getenv("REDSHIFT_HOST")
@@ -156,7 +143,10 @@ func getRegionForBucket(name string) (string, error) {
 
 // in a transaction, truncate, create or update, and then copy from the s3 data file or manifest
 // yell loudly if there is anything different in the target table compared to config (different distkey, etc)
-func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table, truncate, gzip bool, delimiter, timeGranularity string) error {
+func runCopy(
+	db *redshift.Redshift, inputConf s3filepath.S3File, inputTable redshift.Table, targetTable *redshift.Table,
+	truncate, gzip bool, delimiter, timeGranularity, targetTimeZone, streamStart, streamEnd string,
+) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -177,16 +167,16 @@ func runCopy(db *redshift.Redshift, inputConf s3filepath.S3File, inputTable reds
 		var start, end time.Time
 		var err error
 		if timeGranularity == "stream" {
-			start, err = time.Parse("2006-01-02T15:04:05", *streamStart)
+			start, err = time.Parse("2006-01-02T15:04:05", streamStart)
 			if err != nil {
 				return err
 			}
-			end, err = time.Parse("2006-01-02T15:04:05", *streamEnd)
+			end, err = time.Parse("2006-01-02T15:04:05", streamEnd)
 			if err != nil {
 				return err
 			}
 		} else {
-			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity, *targetTimezone)
+			start, end = startEndFromGranularity(inputConf.DataDate, timeGranularity, targetTimeZone)
 		}
 		// To prevent duplicates, clear away any existing data within a certain time range as the data date
 		// (that is, sharing the same data date up to a certain time granularity)
@@ -280,12 +270,43 @@ func main() {
 		log.Fatal(err)
 	}
 
-	flag.Parse()
+	flags := struct {
+		InputSchemaName string `config:"schema"`
+		InputTables     string `config:"tables"`
+		InputBucket     string `config:"bucket"`
+		Truncate        bool   `config:"truncate"`
+		Force           bool   `config:"force"`
+		DataDate        string `config:"date,required"`
+		ConfigFile      string `config:"config"`
+		GZip            bool   `config:"gzip"`
+		Delimiter       string `config:"delimiter"`
+		TimeGranularity string `config:"granularity,required"`
+		StreamStart     string `config:"streamStart"`
+		StreamEnd       string `config:"streamEnd"`
+		TargetTimezone  string `config:"timezone"`
+	}{ // Specifying defaults:
+		InputSchemaName: "mongo",
+		InputTables:     "",
+		InputBucket:     "metrics",
+		Truncate:        false,
+		Force:           false,
+		DataDate:        "",
+		ConfigFile:      "",
+		GZip:            true,
+		Delimiter:       "",
+		TimeGranularity: "day",
+		StreamStart:     "",
+		StreamEnd:       "",
+		TargetTimezone:  "UTC",
+	}
+	if err := configure.Configure(&flags); err != nil {
+		log.Fatalf("err: %#v", err)
+	}
 
-	payloadForSignalFx = fmt.Sprintf("--schema %s", *inputSchemaName)
+	payloadForSignalFx = fmt.Sprintf("--schema %s", flags.InputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
 
-	if *dataDate == "" {
+	if flags.DataDate == "" {
 		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic("No date provided")
 	}
@@ -294,20 +315,21 @@ func main() {
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
 	supportedGranularities := map[string]bool{"hour": true, "day": true, "stream": true}
-	if !supportedGranularities[*timeGranularity] {
+	if !supportedGranularities[flags.TimeGranularity] {
 		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic(fmt.Sprintf("Unsupported granularity, must be one of %v", getMapKeys(supportedGranularities)))
 	}
 
 	// verify that targetTimezone is a supported Golang location (i.e. "America/Los_Angeles")
-	targetDataLocation, err := time.LoadLocation(*targetTimezone)
-	fatalIfErr(err, fmt.Sprintf("unable to load timezone '%s'", *targetTimezone))
+	targetDataLocation, err := time.LoadLocation(flags.TargetTimezone)
+	fatalIfErr(err, fmt.Sprintf("unable to load timezone '%s'", flags.TargetTimezone))
 
-	awsRegion, locationErr := getRegionForBucket(*inputBucket)
-	fatalIfErr(locationErr, "error getting location for bucket "+*inputBucket)
+	awsRegion, locationErr := getRegionForBucket(flags.InputBucket)
+	fatalIfErr(locationErr, "error getting location for bucket "+flags.InputBucket)
+
 	// use an custom bucket type for testablitity
 	bucket := s3filepath.S3Bucket{
-		Name:            *inputBucket,
+		Name:            flags.InputBucket,
 		Region:          awsRegion,
 		RedshiftRoleARN: redshiftRoleARN}
 
@@ -321,14 +343,15 @@ func main() {
 	db, err := redshift.NewRedshift(host, port, dbName, user, pwd, timeout)
 	fatalIfErr(err, "error getting redshift instance")
 
+	fmt.Printf("configure: %+#v\n", flags)
 	var copyErrors error
 	// for each table passed in - likely we could goroutine this out
-	for _, t := range strings.Split(*inputTables, ",") {
-		log.Printf("attempting to run on schema: %s table: %s", *inputSchemaName, t)
+	for _, t := range strings.Split(flags.InputTables, ",") {
+		log.Printf("attempting to run on schema: %s table: %s", flags.InputSchemaName, t)
 		// override most recent data file
-		parsedInputDate, err := time.Parse(time.RFC3339, *dataDate)
-		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", *dataDate))
-		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, *inputSchemaName, t, *configFile, parsedInputDate)
+		parsedInputDate, err := time.Parse(time.RFC3339, flags.DataDate)
+		fatalIfErr(err, fmt.Sprintf("issue parsing date: %s", flags.DataDate))
+		inputConf, err := s3filepath.CreateS3File(s3filepath.S3PathChecker{}, bucket, flags.InputSchemaName, t, flags.ConfigFile, parsedInputDate)
 		fatalIfErr(err, "Issue getting data file from s3")
 		inputTable, err := db.GetTableFromConf(*inputConf) // allow passing explicit config later
 		fatalIfErr(err, "Issue getting table from input")
@@ -340,15 +363,18 @@ func main() {
 		}
 
 		// unless --force, don't update unless input data is new
-		if *timeGranularity != "stream" && isInputDataStale(parsedInputDate, targetDataDate, *timeGranularity, targetDataLocation) {
-			if *force == false {
+		if flags.TimeGranularity != "stream" && isInputDataStale(parsedInputDate, targetDataDate, flags.TimeGranularity, targetDataLocation) {
+			if flags.Force == false {
 				log.Printf("Recent data already exists in db: %s", *targetDataDate)
 				continue
 			}
 			log.Printf("Forcing update of inputTable: %s", inputConf.Table)
 		}
 
-		if err := runCopy(db, *inputConf, *inputTable, targetTable, *truncate, *gzip, *delimiter, *timeGranularity); err != nil {
+		if err := runCopy(
+			db, *inputConf, *inputTable, targetTable, flags.Truncate, flags.GZip, flags.Delimiter,
+			flags.TimeGranularity, flags.TargetTimezone, flags.StreamStart, flags.StreamEnd,
+		); err != nil {
 			log.Printf("error running copy for table %s: %s", t, err)
 			copyErrors = multierror.Append(copyErrors, err)
 		} else {

@@ -2,7 +2,6 @@ package redshift
 
 import (
 	"database/sql"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -109,7 +108,6 @@ var (
 // on instantiation and the AWS env vars we assume exist
 // Don't need to pass s3 info unless doing a COPY operation
 func NewRedshift(host, port, db, user, password string, timeout int) (*Redshift, error) {
-	flag.Parse()
 	source := fmt.Sprintf("host=%s port=%s dbname=%s keepalive=1 connect_timeout=%d", host, port, db, timeout)
 	log.Println("Connecting to Redshift Source: ", source)
 	source += fmt.Sprintf(" user=%s password=%s", user, password)
