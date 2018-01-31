@@ -58,3 +58,7 @@
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
+
+[[constraint]]
+  name = "github.com/clever/configure"
+  version = "1.0.0"

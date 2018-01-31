@@ -14,4 +14,5 @@ CMD exec gearcmd \
   --name ${WORKER_NAME} \
   --cmd s3-to-redshift \
   --cmdtimeout 120m \
+  --parseargs false \
   --retry 1
