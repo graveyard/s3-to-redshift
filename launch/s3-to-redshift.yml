@@ -22,3 +22,7 @@ team: eng-ip
 resources:
   cpu: 0.05
   max_mem: 0.05
+aws:
+  managed:
+    clever:
+    - Workflows
