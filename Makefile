@@ -1,11 +1,15 @@
 include golang.mk
-.DEFAULT_GOAL := test # override default goal set in library makefile
+include sfncli.mk
+.DEFAULT_GOAL := test
 
-.PHONY: build test golint docs $(PKG) $(PKGS) vendor
 SHELL := /bin/bash
 PKG := github.com/Clever/s3-to-redshift
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
+SFNCLI_VERSION := latest
+
+.PHONY: test $(PKGS) run install_deps build
+
 $(eval $(call golang-version-check,1.9))
 
 # variables for testing
@@ -22,18 +26,11 @@ export SERVICE_GEARMAN_ADMIN_HTTP_PROTO ?= x
 export AWS_REGION ?= x
 export REDSHIFT_ROLE_ARN ?= x
 
-
-all: test build
-
-clean:
-	rm -f $(GOPATH)/src/$(PKG)/bin/$(EXECUTABLE)
-	rm -f $(GOPATH)/src/$(PKG)/bin/kvconfig.yml
-
-build: clean
-	go build -o bin/$(EXECUTABLE) $(PKG)
-	cp kvconfig.yml bin/kvconfig.yml
-
 test: $(PKGS)
+
+build: bin/sfncli
+	$(call golang-build,$(PKG),$(EXECUTABLE))
+
 $(PKGS): golang-test-all-deps
 	$(call golang-test-all,$@)
 
@@ -48,9 +45,11 @@ export TRUNCATE ?= false
 export GZIP ?= true
 
 run: build
-	./bin/$(EXECUTABLE) --bucket $(S3_BUCKET) --schema $(SCHEMA) --tables $(TABLES) --date $(DATE) --granularity $(GRANULARITY) --force=$(FORCE) --truncate=$(TRUNCATE) --gzip=$(GZIP)
-
-
+	bin/sfncli --activityname $(_DEPLOY_ENV)--$(_APP_NAME) \
+		--region us-west-2 \
+		--cloudwatchregion us-west-1 \
+		--workername `hostname` \
+		--cmd bin/$(EXECUTABLE)
 
 install_deps: golang-dep-vendor-deps
 	$(call golang-dep-vendor)
