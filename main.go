@@ -237,7 +237,7 @@ func runCopy(
 
 func startEndFromGranularity(t time.Time, granularity string, targetTimezone string) (time.Time, time.Time) {
 	// Rotate time if in PT
-	fmt.Println(targetTimezone)
+	log.Print(targetTimezone)
 	if targetTimezone != "UTC" {
 		ptLoc, err := time.LoadLocation(targetTimezone)
 		fatalIfErr(err, "startEndFromGranularity was unable to load timezone")
@@ -349,7 +349,7 @@ func main() {
 	db, err := redshift.NewRedshift(host, port, dbName, user, pwd, timeout)
 	fatalIfErr(err, "error getting redshift instance")
 
-	fmt.Printf("configure: %+#v\n", flags)
+	log.Printf("configure: %+#v\n", flags)
 	var copyErrors error
 	// for each table passed in - likely we could goroutine this out
 	for _, t := range strings.Split(flags.InputTables, ",") {
