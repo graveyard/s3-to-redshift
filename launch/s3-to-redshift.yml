@@ -25,3 +25,6 @@ aws:
   managed:
     clever:
     - Workflows
+  s3:
+    read:
+      - long-term-metrics 
