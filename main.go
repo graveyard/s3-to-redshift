@@ -349,7 +349,6 @@ func main() {
 	db, err := redshift.NewRedshift(host, port, dbName, user, pwd, timeout)
 	fatalIfErr(err, "error getting redshift instance")
 
-	log.Printf("configure: %+#v\n", flags)
 	var copyErrors error
 	// for each table passed in - likely we could goroutine this out
 	for _, t := range strings.Split(flags.InputTables, ",") {
