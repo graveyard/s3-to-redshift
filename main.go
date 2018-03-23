@@ -213,7 +213,7 @@ func runCopy(
 			// N.B. We need to pass backslashes to escape the quotation marks as required
 			// by Golang's os.Args for command line arguments
 			payload, err := json.Marshal(map[string]string{
-				"delete": inputConf.Schema + `."` + inputTable.Name + `"`,
+				"analyze": inputConf.Schema + `."` + inputTable.Name + `"`,
 			})
 			if err != nil {
 				log.Fatalf("Error creating new payload: %s", err)
