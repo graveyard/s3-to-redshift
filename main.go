@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Clever/configure"
@@ -346,7 +349,18 @@ func main() {
 	if port == "" {
 		port = "5439"
 	}
-	db, err := redshift.NewRedshift(host, port, dbName, user, pwd, timeout)
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Signal(syscall.SIGTERM))
+	go func() {
+		for range c {
+			// sfncli will send signals to our container
+			// we should gracefully terminate any running SQL queries
+			cancel()
+		}
+	}()
+
+	db, err := redshift.NewRedshift(ctx, host, port, dbName, user, pwd, timeout)
 	fatalIfErr(err, "error getting redshift instance")
 
 	var copyErrors error
