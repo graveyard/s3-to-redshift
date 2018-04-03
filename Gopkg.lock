@@ -23,16 +23,6 @@
   revision = "84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/Clever/s3-to-redshift"
-  packages = [
-    "logger",
-    "redshift",
-    "s3filepath"
-  ]
-  revision = "a4e0a4023e0b633483fe5dd3653f9e5aecd7037a"
-
-[[projects]]
   name = "github.com/DATA-DOG/go-sqlmock"
   packages = ["."]
   revision = "081a694b0af16f86d406ac2832433a98a6fa625a"
@@ -158,6 +148,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d0615635406790960754d052f9f7506770695d7fbbcc1b33dc66156a539a235e"
+  inputs-digest = "45b9a9fdaa3a45a09a06ff4ac5d27c815a2e813ce0831daa12d23983d2255db7"
   solver-name = "gps-cdcl"
   solver-version = 1
