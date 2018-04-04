@@ -1,6 +1,7 @@
 package redshift
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +17,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	multierror "github.com/hashicorp/go-multierror"
+)
+
+var (
+	textCtx = context.Background()
 )
 
 // helper for TestTableFromConf - marshals the table into a file
@@ -38,7 +43,7 @@ func getTempConfFromTable(name string, table Table) (string, error) {
 }
 
 func TestTableFromConf(t *testing.T) {
-	db := Redshift{nil}
+	db := Redshift{nil, textCtx}
 
 	schema, table := "testschema", "testtable"
 	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
@@ -131,7 +136,7 @@ func TestGetTableMetadata(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	// test normal operation
 	//   - test existence of table
@@ -219,7 +224,7 @@ func TestCreateTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectPrepare("This needs to be here, but not evaluated")
@@ -252,7 +257,7 @@ func TestNoKeyCreateTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 
@@ -291,7 +296,7 @@ func TestJSONCopy(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -313,7 +318,7 @@ func TestJSONCopy(t *testing.T) {
 	db, mock, err = sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift = Redshift{db}
+	mockRedshift = Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -352,7 +357,7 @@ func TestJSONManifestCopy(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -373,7 +378,7 @@ func TestTruncate(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectPrepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
@@ -413,7 +418,7 @@ func TestCSVCopy(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -435,7 +440,7 @@ func TestCSVCopy(t *testing.T) {
 	db, mock, err = sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift = Redshift{db}
+	mockRedshift = Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -474,7 +479,7 @@ func TestCSVManifestCopy(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -508,7 +513,7 @@ func TestUpdateTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db}
+	mockRedshift := Redshift{db, textCtx}
 
 	mock.ExpectBegin()
 	for _, updateSQL := range []string{
