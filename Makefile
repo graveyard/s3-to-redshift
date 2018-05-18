@@ -10,7 +10,7 @@ SFNCLI_VERSION := latest
 
 .PHONY: test $(PKGS) run install_deps build
 
-$(eval $(call golang-version-check,1.9))
+$(eval $(call golang-version-check,1.10))
 
 # variables for testing
 export GEARMAN_ADMIN_PATH ?= x
