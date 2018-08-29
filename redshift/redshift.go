@@ -116,6 +116,9 @@ func NewRedshift(ctx context.Context, host, port, db, user, password string, tim
 	if err != nil {
 		return nil, err
 	}
+	if err := sqldb.Ping(); err != nil {
+		return nil, err
+	}
 	return &Redshift{sqldb, ctx}, nil
 }
 
