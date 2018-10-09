@@ -404,5 +404,28 @@ func main() {
 	if copyErrors != nil {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
-	log.Println("done with full run")
+	if flags.InputTables == "managed_login_facts_vw_stream" {
+		job := map[string]string{
+			"granularity": "day",
+			"input":       "paid_active_schools_vw",
+			"schema":      "managed",
+		}
+		payloadForNextJob, err := json.Marshal(job)
+		if err != nil {
+			log.Fatalf("error creating new payload: %s", err)
+		}
+		fmt.Println(string(payloadForNextJob))
+	} else if flags.InputTables == "helper_district_active_users_day" {
+		job := map[string]string{
+			"dest": "district_vw",
+			"src":  "managed.district_vw",
+		}
+		payloadForNextJob, err := json.Marshal(job)
+		if err != nil {
+			log.Fatalf("error creating new payload: %s", err)
+		}
+		fmt.Println(string(payloadForNextJob))
+	} else {
+		log.Println("done with full run")
+	}
 }
