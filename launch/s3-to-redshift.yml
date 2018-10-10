@@ -28,3 +28,8 @@ aws:
   s3:
     read:
       - long-term-metrics 
+autoscaling:
+  metric: cpu
+  metric_target: 50
+  min_count: 2
+  max_count: 4
