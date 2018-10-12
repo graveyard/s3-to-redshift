@@ -9,10 +9,6 @@
   name = "github.com/Clever/pq"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/Clever/s3-to-redshift"
-
-[[constraint]]
   name = "github.com/DATA-DOG/go-sqlmock"
 
 [[constraint]]
