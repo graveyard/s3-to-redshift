@@ -320,6 +320,24 @@ func main() {
 		panic("No date provided")
 	}
 
+	// we'll print out a payload if this job is related to SAC workflow
+	var payloadForSACWorkflow []byte
+	if flags.InputTables == "school_app_connections" {
+		payloadForSACWorkflow, err = json.Marshal(map[string]interface{}{
+			"schema":      "managed",
+			"input":       "paid_active_school_app_connection_vw",
+			"granularity": flags.TimeGranularity,
+		})
+	} else if flags.InputTables == "managed_paid_active_school_app_connection_vw_day" {
+		payloadForSACWorkflow, err = json.Marshal(map[string]interface{}{
+			"dest": "consolidated_school_app_connections_count_by_day_vw",
+			"src":  "historical_managed.consolidated_school_app_connections_count_by_day_vw",
+		})
+	}
+	if err != nil {
+		log.Fatalf("Error creating payload: %s", err)
+	}
+
 	// verify that timeGranularity is a supported value. for convenience,
 	// we use the convention that granularities must be valid PostgreSQL dateparts
 	// (see: http://www.postgresql.org/docs/8.1/static/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC)
@@ -404,5 +422,13 @@ func main() {
 	if copyErrors != nil {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
-	log.Println("done with full run")
+
+	if len(payloadForSACWorkflow) > 0 {
+		_, err = fmt.Println(string(payloadForSACWorkflow))
+		if err != nil {
+			log.Fatalf("Error printing result: %s", err)
+		}
+	} else {
+		log.Println("done with full run")
+	}
 }
