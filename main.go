@@ -322,13 +322,7 @@ func main() {
 
 	// we'll print out a payload if this job is related to SAC workflow
 	var payloadForSACWorkflow []byte
-	if flags.InputTables == "school_app_connections" {
-		payloadForSACWorkflow, err = json.Marshal(map[string]interface{}{
-			"schema":      "managed",
-			"input":       "paid_active_school_app_connection_vw",
-			"granularity": flags.TimeGranularity,
-		})
-	} else if flags.InputTables == "managed_paid_active_school_app_connection_vw_day" {
+	if flags.InputTables == "managed_paid_active_school_app_connection_vw_day" {
 		payloadForSACWorkflow, err = json.Marshal(map[string]interface{}{
 			"dest": "consolidated_school_app_connections_count_by_day_vw",
 			"src":  "historical_managed.consolidated_school_app_connections_count_by_day_vw",
