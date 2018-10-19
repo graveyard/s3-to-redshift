@@ -264,6 +264,28 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 	return start, end
 }
 
+func createPayload(dest string, src string) []byte {
+	payload, err := json.Marshal(map[string]interface{}{
+		"dest": dest,
+		"src":  src,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return payload
+}
+
+func getPayload(table string) []byte {
+	workflowPayloadTableMapping := map[string][]byte{
+		"managed_paid_active_school_app_connection_vw_day": createPayload(
+			"consolidated_school_app_connections_count_by_day_vw",
+			"historical_managed.consolidated_school_app_connections_count_by_day_vw",
+		),
+	}
+
+	return workflowPayloadTableMapping[table]
+}
+
 // This worker finds the latest file in s3 and uploads it to redshift
 // If the destination table does not exist, the worker creates it
 // If the destination table lacks columns, the worker creates those as well
@@ -318,18 +340,6 @@ func main() {
 	if flags.DataDate == "" {
 		logger.JobFinishedEvent(payloadForSignalFx, false)
 		panic("No date provided")
-	}
-
-	// we'll print out a payload if this job is related to SAC workflow
-	var payloadForSACWorkflow []byte
-	if flags.InputTables == "managed_paid_active_school_app_connection_vw_day" {
-		payloadForSACWorkflow, err = json.Marshal(map[string]interface{}{
-			"dest": "consolidated_school_app_connections_count_by_day_vw",
-			"src":  "historical_managed.consolidated_school_app_connections_count_by_day_vw",
-		})
-	}
-	if err != nil {
-		log.Fatalf("Error creating payload: %s", err)
 	}
 
 	// verify that timeGranularity is a supported value. for convenience,
@@ -417,8 +427,11 @@ func main() {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
 
-	if len(payloadForSACWorkflow) > 0 {
-		_, err = fmt.Println(string(payloadForSACWorkflow))
+	// we'll print out a payload if this job is related to a workflow
+	payload := getPayload(flags.InputTables)
+
+	if len(payload) > 0 {
+		_, err = fmt.Println(string(payload))
 		if err != nil {
 			log.Fatalf("Error printing result: %s", err)
 		}
