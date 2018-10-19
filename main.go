@@ -264,6 +264,28 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 	return start, end
 }
 
+func createPayload(dest string, src string) []byte {
+	payload, err := json.Marshal(map[string]interface{}{
+		"dest": dest,
+		"src":  src,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return payload
+}
+
+func getPayload(table string) []byte {
+	workflowPayloadTableMapping := map[string][]byte{
+		"managed_paid_active_school_app_connection_vw_day": createPayload(
+			"consolidated_school_app_connections_count_by_day_vw",
+			"historical_managed.consolidated_school_app_connections_count_by_day_vw",
+		),
+	}
+
+	return workflowPayloadTableMapping[table]
+}
+
 // This worker finds the latest file in s3 and uploads it to redshift
 // If the destination table does not exist, the worker creates it
 // If the destination table lacks columns, the worker creates those as well
@@ -404,5 +426,16 @@ func main() {
 	if copyErrors != nil {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
-	log.Println("done with full run")
+
+	// we'll print out a payload if this job is related to a workflow
+	payload := getPayload(flags.InputTables)
+
+	if len(payload) > 0 {
+		_, err = fmt.Println(string(payload))
+		if err != nil {
+			log.Fatalf("Error printing result: %s", err)
+		}
+	} else {
+		log.Println("done with full run")
+	}
 }
