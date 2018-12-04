@@ -264,6 +264,28 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 	return start, end
 }
 
+func createPayload(dest string, src string) []byte {
+	payload, err := json.Marshal(map[string]interface{}{
+		"dest": dest,
+		"src":  src,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return payload
+}
+
+func getPayload(table string) []byte {
+	workflowPayloadTableMapping := map[string][]byte{
+		"managed_paid_active_school_app_connection_vw_day": createPayload(
+			"consolidated_school_app_connections_count_by_day_vw",
+			"historical_managed.consolidated_school_app_connections_count_by_day_vw",
+		),
+	}
+
+	return workflowPayloadTableMapping[table]
+}
+
 // This worker finds the latest file in s3 and uploads it to redshift
 // If the destination table does not exist, the worker creates it
 // If the destination table lacks columns, the worker creates those as well
@@ -404,27 +426,15 @@ func main() {
 	if copyErrors != nil {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
-	if flags.InputTables == "managed_login_facts_vw_stream" {
-		job := map[string]string{
-			"granularity": "day",
-			"input":       "paid_active_schools_vw",
-			"schema":      "managed",
-		}
-		payloadForNextJob, err := json.Marshal(job)
+
+	// we'll print out a payload if this job is related to a workflow
+	payload := getPayload(flags.InputTables)
+
+	if len(payload) > 0 {
+		_, err = fmt.Println(string(payload))
 		if err != nil {
-			log.Fatalf("error creating new payload: %s", err)
+			log.Fatalf("Error printing result: %s", err)
 		}
-		fmt.Println(string(payloadForNextJob))
-	} else if flags.InputTables == "helper_district_active_users_day" {
-		job := map[string]string{
-			"dest": "district_vw",
-			"src":  "managed.district_vw",
-		}
-		payloadForNextJob, err := json.Marshal(job)
-		if err != nil {
-			log.Fatalf("error creating new payload: %s", err)
-		}
-		fmt.Println(string(payloadForNextJob))
 	} else {
 		log.Println("done with full run")
 	}
