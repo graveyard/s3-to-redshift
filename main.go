@@ -264,11 +264,8 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 	return start, end
 }
 
-func createPayload(dest string, src string) []byte {
-	payload, err := json.Marshal(map[string]interface{}{
-		"dest": dest,
-		"src":  src,
-	})
+func createPayload(params map[string]interface{}) []byte {
+	payload, err := json.Marshal(params)
 	if err != nil {
 		panic(err)
 	}
@@ -278,8 +275,17 @@ func createPayload(dest string, src string) []byte {
 func getPayload(table string) []byte {
 	workflowPayloadTableMapping := map[string][]byte{
 		"managed_paid_active_school_app_connection_vw_day": createPayload(
-			"consolidated_school_app_connections_count_by_day_vw",
-			"historical_managed.consolidated_school_app_connections_count_by_day_vw",
+			map[string]interface{}{
+				"dest": "consolidated_school_app_connections_count_by_day_vw",
+				"src":  "historical_managed.consolidated_school_app_connections_count_by_day_vw",
+			},
+		),
+		"managed_login_facts_vw_stream": createPayload(
+			map[string]interface{}{
+				"granularity": "day",
+				"input":       "district_active_users",
+				"schema":      "helper",
+			},
 		),
 	}
 
