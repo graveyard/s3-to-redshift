@@ -287,6 +287,12 @@ func getPayload(table string) []byte {
 				"schema":      "helper",
 			},
 		),
+		"helper_district_active_users_day": createPayload(
+			map[string]interface{}{
+				"dest": "district_vw",
+				"src":  "managed.district_vw",
+			},
+		),
 	}
 
 	return workflowPayloadTableMapping[table]
