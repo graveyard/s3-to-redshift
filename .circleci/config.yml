@@ -22,6 +22,7 @@ jobs:
     - run: $HOME/ci-scripts/circleci/report-card $RC_DOCKER_USER $RC_DOCKER_PASS "$RC_DOCKER_EMAIL" $RC_GITHUB_TOKEN
     - run:
         command: |-
+          sudo apt-get -y update
           cd /tmp/ && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py
           sudo apt-get install python-dev
           sudo pip install --upgrade awscli && aws --version
