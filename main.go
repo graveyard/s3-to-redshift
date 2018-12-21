@@ -266,19 +266,19 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 }
 
 type payload struct {
-	InputSchemaName string `json:"schema"`
-	InputTables     string `json:"tables"`
-	InputBucket     string `json:"bucket"`
-	Truncate        bool   `json:"truncate"`
-	Force           bool   `json:"force"`
-	DataDate        string `json:"date,required"`
-	ConfigFile      string `json:"config"`
-	GZip            bool   `json:"gzip"`
-	Delimiter       string `json:"delimiter"`
-	TimeGranularity string `json:"granularity,required"`
-	StreamStart     string `json:"streamStart"`
-	StreamEnd       string `json:"streamEnd"`
-	TargetTimezone  string `json:"timezone"`
+	InputSchemaName string `config:"schema"`
+	InputTables     string `config:"tables"`
+	InputBucket     string `config:"bucket"`
+	Truncate        bool   `config:"truncate"`
+	Force           bool   `config:"force"`
+	DataDate        string `config:"date,required"`
+	ConfigFile      string `config:"config"`
+	GZip            bool   `config:"gzip"`
+	Delimiter       string `config:"delimiter"`
+	TimeGranularity string `config:"granularity,required"`
+	StreamStart     string `config:"streamStart"`
+	StreamEnd       string `config:"streamEnd"`
+	TargetTimezone  string `config:"timezone"`
 }
 
 // This worker finds the latest file in s3 and uploads it to redshift
@@ -312,7 +312,7 @@ func main() {
 		TargetTimezone:  "UTC",
 	}
 
-	nextPayload, err := configure.AnalyticsWorker(&flags)
+	nextPayload, err := config.AnalyticsWorker(&flags)
 	if err != nil {
 		log.Fatalf("err: %#v", err)
 	}
@@ -410,5 +410,5 @@ func main() {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
 
-	configure.PrintPayload(*nextPayload)
+	config.PrintPayload(*nextPayload)
 }

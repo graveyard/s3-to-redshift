@@ -1,4 +1,4 @@
-package configure
+package config
 
 import (
 	"bytes"
@@ -243,9 +243,12 @@ func AnalyticsWorker(configStruct interface{}) (*AnalyticsPipelinePayload, error
 		return nil, err
 	}
 
-	result := AnalyticsPipelinePayload{}
+	result := AnalyticsPipelinePayload{
+		Current:    map[string]interface{}{},
+		Remanining: []map[string]interface{}{},
+	}
 	if len(analyticsPayload.Remanining) > 0 {
-		result.Current = analyticsPayload.Current
+		result.Current = analyticsPayload.Remanining[0]
 		result.Remanining = analyticsPayload.Remanining[1:]
 	}
 
