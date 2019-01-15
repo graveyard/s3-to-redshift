@@ -56,6 +56,13 @@ func TestAnalyticsWorker(t *testing.T) {
 			newRemaining: emptyRemaining,
 		},
 		{
+			context:      "unwrapped json",
+			args:         []string{`{"district_id":"abc123"}`},
+			district:     expectedDistrict,
+			newCurrent:   emptyCurrent,
+			newRemaining: emptyRemaining,
+		},
+		{
 			context:      "json w/ all fields",
 			args:         []string{`{"current": {"district_id":"abc123","collection":"schools"},"remaining":[{}]}`},
 			district:     expectedDistrict,

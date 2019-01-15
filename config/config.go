@@ -221,6 +221,13 @@ func AnalyticsWorker(configStruct interface{}) (*AnalyticsPipelinePayload, error
 			return nil, ErrInvalidJSON
 		}
 
+		if analyticsPayload.Current == nil {
+			err := attemptUnwrappedPayload(configFlags, config)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		for i := 0; i < config.NumField(); i++ {
 			valueField := config.Field(i)
 			tagVal, _, err := parseTagKey(config.Type().Field(i).Tag.Get(structTagKey))
@@ -253,4 +260,29 @@ func AnalyticsWorker(configStruct interface{}) (*AnalyticsPipelinePayload, error
 	}
 
 	return &result, nil
+}
+
+// attemptUnwrappedPayload attempts to parse a payload that is in the old format, without a
+// current and remaining attribute.
+func attemptUnwrappedPayload(configFlags *flag.FlagSet, config reflect.Value) error {
+	unwrappedPayload := map[string]interface{}{}
+	if err := json.NewDecoder(bytes.NewBufferString(configFlags.Arg(0))).Decode(&unwrappedPayload); err != nil {
+		return ErrInvalidJSON
+	}
+	for i := 0; i < config.NumField(); i++ {
+		valueField := config.Field(i)
+		tagVal, _, err := parseTagKey(config.Type().Field(i).Tag.Get(structTagKey))
+		if err != nil {
+			return err
+		} else if _, ok := unwrappedPayload[tagVal]; ok {
+			typedAttr := config.Type().Field(i)
+			switch typedAttr.Type.Kind() {
+			case reflect.String:
+				valueField.SetString(unwrappedPayload[tagVal].(string))
+			case reflect.Bool:
+				valueField.SetBool(unwrappedPayload[tagVal].(bool))
+			}
+		}
+	}
+	return nil
 }
