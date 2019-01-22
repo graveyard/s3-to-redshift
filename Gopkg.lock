@@ -17,6 +17,12 @@
   revision = "84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45"
 
 [[projects]]
+  name = "github.com/Clever/worker-util"
+  packages = ["analyticspipeline"]
+  revision = "5c91ea643bff3031a8981da4c7d6aaf7bf5f40ef"
+  version = "5.16.1"
+
+[[projects]]
   name = "github.com/DATA-DOG/go-sqlmock"
   packages = ["."]
   revision = "081a694b0af16f86d406ac2832433a98a6fa625a"
@@ -142,6 +148,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e5ee8842afbdfb81a312183b6c6106940c77c18c999555bf751a9d2b965db43b"
+  inputs-digest = "9da45459351b45143ee8043a30117f6d1abda130b4f188ca66cc59bf416fafec"
   solver-name = "gps-cdcl"
   solver-version = 1
