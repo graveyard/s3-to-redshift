@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "add-analyticspipeline-package"
+  name = "github.com/Clever/analytics-util"
+  packages = ["analyticspipeline"]
+  revision = "05d5551a2bbc57c970a09333ec7c7b1901041ea4"
+
+[[projects]]
   name = "github.com/Clever/discovery-go"
   packages = ["."]
   revision = "12684ef3012bf55b9827a6e7c96503e37b0d8379"
@@ -15,12 +21,6 @@
   name = "github.com/Clever/pq"
   packages = ["."]
   revision = "84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45"
-
-[[projects]]
-  name = "github.com/Clever/worker-util"
-  packages = ["analyticspipeline"]
-  revision = "5c91ea643bff3031a8981da4c7d6aaf7bf5f40ef"
-  version = "5.16.1"
 
 [[projects]]
   name = "github.com/DATA-DOG/go-sqlmock"
@@ -148,6 +148,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9da45459351b45143ee8043a30117f6d1abda130b4f188ca66cc59bf416fafec"
+  inputs-digest = "5c7008956305513543d92fba71d28334adebd9a669ffe0f21f73e6595d60a884"
   solver-name = "gps-cdcl"
   solver-version = 1

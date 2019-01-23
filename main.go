@@ -14,11 +14,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Clever/analytics-util/analyticspipeline"
 	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
-	"github.com/Clever/worker-util/analyticspipeline"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
