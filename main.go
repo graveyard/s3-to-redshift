@@ -14,12 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Clever/s3-to-redshift/config"
-
+	"github.com/Clever/analytics-util/analyticspipeline"
 	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -312,10 +312,11 @@ func main() {
 		TargetTimezone:  "UTC",
 	}
 
-	nextPayload, err := config.AnalyticsWorker(&flags)
+	nextPayload, err := analyticspipeline.AnalyticsWorker(&flags)
 	if err != nil {
 		log.Fatalf("err: %#v", err)
 	}
+	defer analyticspipeline.PrintPayload(nextPayload)
 
 	payloadForSignalFx = fmt.Sprintf("--schema %s", flags.InputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
@@ -409,6 +410,4 @@ func main() {
 	if copyErrors != nil {
 		log.Fatalf("error loading tables: %s", copyErrors)
 	}
-
-	config.PrintPayload(*nextPayload)
 }

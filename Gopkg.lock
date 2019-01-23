@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/Clever/analytics-util"
+  packages = ["analyticspipeline"]
+  revision = "204e4231ba9909d8165707e18302c1652b11ec76"
+  version = "1.0.0"
+
+[[projects]]
   name = "github.com/Clever/discovery-go"
   packages = ["."]
   revision = "12684ef3012bf55b9827a6e7c96503e37b0d8379"
@@ -142,6 +148,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e5ee8842afbdfb81a312183b6c6106940c77c18c999555bf751a9d2b965db43b"
+  inputs-digest = "5c7008956305513543d92fba71d28334adebd9a669ffe0f21f73e6595d60a884"
   solver-name = "gps-cdcl"
   solver-version = 1
