@@ -14,11 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Clever/configure"
+	"github.com/Clever/analytics-util/analyticspipeline"
 	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -264,26 +265,20 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 	return start, end
 }
 
-func createPayload(dest string, src string) []byte {
-	payload, err := json.Marshal(map[string]interface{}{
-		"dest": dest,
-		"src":  src,
-	})
-	if err != nil {
-		panic(err)
-	}
-	return payload
-}
-
-func getPayload(table string) []byte {
-	workflowPayloadTableMapping := map[string][]byte{
-		"managed_paid_active_school_app_connection_vw_day": createPayload(
-			"consolidated_school_app_connections_count_by_day_vw",
-			"historical_managed.consolidated_school_app_connections_count_by_day_vw",
-		),
-	}
-
-	return workflowPayloadTableMapping[table]
+type payload struct {
+	InputSchemaName string `config:"schema"`
+	InputTables     string `config:"tables"`
+	InputBucket     string `config:"bucket"`
+	Truncate        bool   `config:"truncate"`
+	Force           bool   `config:"force"`
+	DataDate        string `config:"date,required"`
+	ConfigFile      string `config:"config"`
+	GZip            bool   `config:"gzip"`
+	Delimiter       string `config:"delimiter"`
+	TimeGranularity string `config:"granularity,required"`
+	StreamStart     string `config:"streamStart"`
+	StreamEnd       string `config:"streamEnd"`
+	TargetTimezone  string `config:"timezone"`
 }
 
 // This worker finds the latest file in s3 and uploads it to redshift
@@ -301,21 +296,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	flags := struct {
-		InputSchemaName string `config:"schema"`
-		InputTables     string `config:"tables"`
-		InputBucket     string `config:"bucket"`
-		Truncate        bool   `config:"truncate"`
-		Force           bool   `config:"force"`
-		DataDate        string `config:"date,required"`
-		ConfigFile      string `config:"config"`
-		GZip            bool   `config:"gzip"`
-		Delimiter       string `config:"delimiter"`
-		TimeGranularity string `config:"granularity,required"`
-		StreamStart     string `config:"streamStart"`
-		StreamEnd       string `config:"streamEnd"`
-		TargetTimezone  string `config:"timezone"`
-	}{ // Specifying defaults:
+	flags := payload{ // Specifying defaults:
 		InputSchemaName: "mongo",
 		InputTables:     "",
 		InputBucket:     "metrics",
@@ -330,9 +311,12 @@ func main() {
 		StreamEnd:       "",
 		TargetTimezone:  "UTC",
 	}
-	if err := configure.Configure(&flags); err != nil {
+
+	nextPayload, err := analyticspipeline.AnalyticsWorker(&flags)
+	if err != nil {
 		log.Fatalf("err: %#v", err)
 	}
+	defer analyticspipeline.PrintPayload(nextPayload)
 
 	payloadForSignalFx = fmt.Sprintf("--schema %s", flags.InputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
@@ -425,17 +409,5 @@ func main() {
 	}
 	if copyErrors != nil {
 		log.Fatalf("error loading tables: %s", copyErrors)
-	}
-
-	// we'll print out a payload if this job is related to a workflow
-	payload := getPayload(flags.InputTables)
-
-	if len(payload) > 0 {
-		_, err = fmt.Println(string(payload))
-		if err != nil {
-			log.Fatalf("Error printing result: %s", err)
-		}
-	} else {
-		log.Println("done with full run")
 	}
 }

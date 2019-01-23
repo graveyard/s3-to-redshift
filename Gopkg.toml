@@ -16,7 +16,7 @@
   version = "1.13.0"
 
 [[constraint]]
-  name = "github.com/clever/configure"
+  name = "github.com/clever/analytics-util"
   version = "1.0.0"
 
 [[constraint]]
