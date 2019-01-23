@@ -2,10 +2,10 @@
 
 
 [[projects]]
-  branch = "add-analyticspipeline-package"
   name = "github.com/Clever/analytics-util"
   packages = ["analyticspipeline"]
-  revision = "05d5551a2bbc57c970a09333ec7c7b1901041ea4"
+  revision = "204e4231ba9909d8165707e18302c1652b11ec76"
+  version = "1.0.0"
 
 [[projects]]
   name = "github.com/Clever/discovery-go"
