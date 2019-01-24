@@ -302,7 +302,7 @@ func main() {
 		InputBucket:     "metrics",
 		Truncate:        false,
 		Force:           false,
-		DataDate:        "",
+		DataDate:        time.Now().Truncate(time.Hour).UTC().Format(time.RFC3339),
 		ConfigFile:      "",
 		GZip:            true,
 		Delimiter:       "",
