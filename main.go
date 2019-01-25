@@ -268,7 +268,7 @@ func startEndFromGranularity(t time.Time, granularity string, targetTimezone str
 type payload struct {
 	InputSchemaName string `config:"schema"`
 	InputTables     string `config:"tables"`
-	InputBucket     string `config:"bucket"`
+	InputBucket     string `config:"bucket,required"`
 	Truncate        bool   `config:"truncate"`
 	Force           bool   `config:"force"`
 	DataDate        string `config:"date,required"`
@@ -299,7 +299,7 @@ func main() {
 	flags := payload{ // Specifying defaults:
 		InputSchemaName: "mongo",
 		InputTables:     "",
-		InputBucket:     "metrics",
+		InputBucket:     "",
 		Truncate:        false,
 		Force:           false,
 		DataDate:        "",
