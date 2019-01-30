@@ -8,7 +8,6 @@ env:
 - REDSHIFT_HOST
 - REDSHIFT_ROLE_ARN
 - REDSHIFT_DB
-- WORKER_NAME
 team: eng-ip
 resources:
   cpu: 0.05
