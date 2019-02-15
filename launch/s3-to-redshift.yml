@@ -2,12 +2,20 @@ run:
   type: docker
 env:
 - AWS_REGION
+- GEARMAN_ADMIN_USER
+- GEARMAN_ADMIN_PASS
+- GEARMAN_ADMIN_PATH
 - REDSHIFT_USER
 - REDSHIFT_PASSWORD
 - REDSHIFT_PORT
 - REDSHIFT_HOST
 - REDSHIFT_ROLE_ARN
 - REDSHIFT_DB
+- VACUUM_WORKER
+- WORKER_NAME
+dependencies:
+- gearmand
+- gearman-admin
 team: eng-ip
 resources:
   cpu: 0.05

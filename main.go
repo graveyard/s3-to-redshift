@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -12,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Clever/analytics-util/analyticspipeline"
+	discovery "github.com/Clever/discovery-go"
 	"github.com/Clever/s3-to-redshift/logger"
 	redshift "github.com/Clever/s3-to-redshift/redshift"
 	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
@@ -33,6 +37,7 @@ var (
 	user            = env.MustGet("REDSHIFT_USER")
 	pwd             = env.MustGet("REDSHIFT_PASSWORD")
 	redshiftRoleARN = env.MustGet("REDSHIFT_ROLE_ARN")
+	vacuumWorker    = env.MustGet("VACUUM_WORKER")
 
 	// payloadForSignalFx holds a subset of the job payload that
 	// we want to alert on as a dimension in SignalFx.
@@ -40,7 +45,29 @@ var (
 	// on job parameters - schema but not date, for instance, since
 	// logging the date would overwhelm SignalFx
 	payloadForSignalFx string
+
+	gearmanAdminURL string
 )
+
+func init() {
+	gearmanAdminUser := env.MustGet("GEARMAN_ADMIN_USER")
+	gearmanAdminPass := env.MustGet("GEARMAN_ADMIN_PASS")
+	gearmanAdminPath := env.MustGet("GEARMAN_ADMIN_PATH")
+	gearmanAdminURL = generateServiceEndpoint(gearmanAdminUser, gearmanAdminPass, gearmanAdminPath)
+}
+
+func generateServiceEndpoint(user, pass, path string) string {
+	hostPort, err := discovery.HostPort("gearman-admin", "http")
+	if err != nil {
+		log.Fatal(err)
+	}
+	proto, err := discovery.Proto("gearman-admin", "http")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf("%s://%s:%s@%s%s", proto, user, pass, hostPort, path)
+}
 
 func fatalIfErr(err error, msg string) {
 	if err != nil {
@@ -178,6 +205,37 @@ func runCopy(
 		return fmt.Errorf("err committing transaction: %s", err)
 	}
 
+	if truncate {
+		// If we've truncated the table we should run vacuum to clear out the old data
+		// Only one vacuum can be run at a time, so we're going to throw this over the wall to
+		// redshift-vacuum and use gearman-admin as a queueing service.
+		if len(gearmanAdminURL) == 0 {
+			log.Fatalf("Unable to post vacuum job to %s", vacuumWorker)
+		} else {
+			log.Println("Submitting job to Gearman admin")
+
+			// N.B. We need to pass backslashes to escape the quotation marks as required
+			// by Golang's os.Args for command line arguments
+			payload, err := json.Marshal(map[string]string{
+				"analyze": inputConf.Schema + `."` + inputTable.Name + `"`,
+			})
+			if err != nil {
+				log.Fatalf("Error creating new payload: %s", err)
+			}
+
+			client := &http.Client{}
+			endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
+			req, err := http.NewRequest("POST", endpoint, bytes.NewReader(payload))
+			if err != nil {
+				log.Fatalf("Error creating new request: %s", err)
+			}
+			req.Header.Add("Content-Type", "text/plain")
+			_, err = client.Do(req)
+			if err != nil {
+				log.Fatalf("Error submitting job: %s", err)
+			}
+		}
+	}
 	return nil
 }
 
