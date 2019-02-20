@@ -29,7 +29,7 @@ aws:
     read:
       - long-term-metrics 
 autoscaling:
-  metric: cpu
-  metric_target: 50
+  metric: active-percent
+  metric_target: 90
   min_count: 2
   max_count: 4
