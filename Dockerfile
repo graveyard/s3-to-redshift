@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch
 RUN apt-get -y update && \
     apt-get install -y ca-certificates
 COPY kvconfig.yml /usr/bin/kvconfig.yml
