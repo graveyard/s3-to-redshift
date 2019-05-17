@@ -16,7 +16,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	// Use our own version of the postgres library so we get keep-alive support.
 	// See https://github.com/Clever/pq/pull/1
-	_ "github.com/Clever/pq"
+	"github.com/Clever/pq"
 
 	"github.com/Clever/s3-to-redshift/s3filepath"
 )
@@ -60,6 +60,20 @@ type ColInfo struct {
 	PrimaryKey  bool   `yaml:"primarykey"`
 	DistKey     bool   `yaml:"distkey"`
 	SortOrdinal int    `yaml:"sortord"`
+}
+
+type rangeQuery int
+
+const (
+	rangeAll rangeQuery = iota
+	rangeYear
+	rangeMonth
+	rangeWeek
+	rangeDay
+)
+
+func rangeQueryString(r rangeQuery) string {
+	return []string{"", "YEAR", "MONTH", "WEEK", "DAY"}[r]
 }
 
 const (
@@ -212,16 +226,42 @@ func (r *Redshift) GetTableMetadata(schema, tableName, dataDateCol string) (*Tab
 	}
 
 	// what's the last data in the table?
-	lastDataQuery := fmt.Sprintf(`SELECT "%s" FROM "%s"."%s" ORDER BY "%s" DESC LIMIT 1`,
-		dataDateCol, schema, tableName, dataDateCol)
-	var lastData time.Time
-	err = r.QueryRowContext(r.ctx, lastDataQuery).Scan(&lastData)
-	if err != nil && err == sql.ErrNoRows {
-		return &retTable, nil, nil
-	} else if err != nil {
-		return nil, nil, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
+	lastData, err := r.MaxTime(fmt.Sprintf(`"%s"."%s"`, schema, tableName), dataDateCol)
+
+	if err != nil {
+		return nil, nil, err
 	}
 	return &retTable, &lastData, nil
+}
+
+// MaxTime returns the maximum value for the time field in the specified table
+func (r *Redshift) MaxTime(fullName, dataDateCol string) (time.Time, error) {
+	return r.maxTime(fullName, dataDateCol, rangeDay)
+}
+
+// maxTime is a helper function to scan progressively larger ranges of time to get more optimized
+// max(time) queries - redshift doesn't have good optimizations for max on sort-keyed columns.
+func (r *Redshift) maxTime(fullName, dataDateCol string, rangeLimit rangeQuery) (time.Time, error) {
+	lastDataQuery := fmt.Sprintf(`SELECT MAX("%s") FROM %s`, dataDateCol, fullName)
+	// SQL Optimization: Redshift doesn't do proper optimizations on max for sort keys, so to reduce our
+	// efficiency, we'll add a where clause to reduce our query area.
+	if rangeLimit != rangeAll {
+		lastDataQuery += fmt.Sprintf(` WHERE time > DATEADD('%s'::text, -1, GETDATE())`, rangeQueryString(rangeLimit))
+	}
+
+	var lastData pq.NullTime
+	err := r.QueryRowContext(r.ctx, lastDataQuery).Scan(&lastData)
+	// max will either return a value or null if no data, rather than no rows.
+	if err != nil {
+		return time.Time{}, fmt.Errorf("issue running query: %s, err: %s", lastDataQuery, err)
+	} else if !lastData.Valid {
+		// If we didn't find a hit in our reduced range, expand it and try again
+		if rangeLimit != rangeAll {
+			return r.maxTime(fullName, dataDateCol, rangeLimit-1)
+		}
+		return time.Time{}, nil
+	}
+	return lastData.Time, nil
 }
 
 func getColumnSQL(c ColInfo) string {
