@@ -210,16 +210,18 @@ func TestCreateTable(t *testing.T) {
 			{"test1", "int", "100", true, false, true, 1},
 			{"id", "text", "", false, true, false, 0},
 			{"somelongtext", "longtext", "", false, false, false, 0},
+			{"test2", "bigint", "9999999999", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
 
-	//createSQL := `aasdadsa character varying(256) PRIMARY KEY , test5 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY , someww221longtext character varying(10000)`
+	//createSQL := `aasdadsa character varying(256) PRIMARY KEY , test5 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY , someww221longtext character varying(10000), test2 bigint DEFAULT 9999999999`
 	//sql := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, schema, table, createSQL)
 	regex := `CREATE TABLE ".*".".*".*` +
 		`"test1" integer DEFAULT 100 NOT NULL SORTKEY.*` +
 		`DISTKEY.*"id" character varying\(256\).*PRIMARY KEY.*` +
-		`"somelongtext" character varying\(65535\).*` // a little awk, but the prepare makes sure this is good
+		`"somelongtext" character varying\(65535\).*` + // a little awk, but the prepare makes sure this is good
+		`"test2" bigint DEFAULT 9999999999.*`
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -506,6 +508,7 @@ func TestUpdateTable(t *testing.T) {
 			{"test2", "int", "100", true, false, true, 1},
 			{"id", "text", "", false, true, false, 0},
 			{"test4", "float", "false", false, false, false, 0},
+			{"test5", "bigint", "9999999999", false, false, false, 0},
 		},
 		Meta: Meta{Schema: schema},
 	}
@@ -520,6 +523,7 @@ func TestUpdateTable(t *testing.T) {
 		`ADD COLUMN id character varying(256) PRIMARY KEY `,
 		`ADD COLUMN test2 integer DEFAULT 100 NOT NULL SORTKEY DISTKEY `,
 		`ADD COLUMN test4 double precision`,
+		`ADD COLUMN test5 bigint DEFAULT 9999999999`,
 	} {
 		sql := fmt.Sprintf(`ALTER TABLE "%s"."%s" (%s)`, schema, table, updateSQL)
 		regex := `ALTER TABLE ".*".".*" (.*)` // a little awk, but the prepare makes sure this is good
