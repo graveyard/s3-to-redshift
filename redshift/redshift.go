@@ -246,7 +246,7 @@ func (r *Redshift) maxTime(fullName, dataDateCol string, rangeLimit rangeQuery) 
 	// SQL Optimization: Redshift doesn't do proper optimizations on max for sort keys, so to reduce our
 	// efficiency, we'll add a where clause to reduce our query area.
 	if rangeLimit != rangeAll {
-		lastDataQuery += fmt.Sprintf(` WHERE time > DATEADD('%s'::text, -1, GETDATE())`, rangeQueryString(rangeLimit))
+		lastDataQuery += fmt.Sprintf(` WHERE time > GETDATE() - INTERVAL '1 %s'`, rangeQueryString(rangeLimit))
 	}
 
 	var lastData pq.NullTime

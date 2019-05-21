@@ -160,7 +160,7 @@ func TestGetTableMetadata(t *testing.T) {
 	mock.ExpectQuery(colInfoRegex).WithArgs().WillReturnRows(colInfoRows)
 	// last data
 	// This is a regex, so we have to escape parentheses.
-	dateRegex := fmt.Sprintf(`SELECT MAX\("%s"\) FROM "%s"."%s" WHERE time > DATEADD\('DAY'::text, -1, GETDATE\(\)\)`, dataDateCol, schema, table)
+	dateRegex := fmt.Sprintf(`SELECT MAX\("%s"\) FROM "%s"."%s" WHERE time > GETDATE\(\) - INTERVAL '1 DAY'`, dataDateCol, schema, table)
 	dateRows := sqlmock.NewRows([]string{"date"})
 	dateRows.AddRow(expectedDate)
 	mock.ExpectQuery(dateRegex).WithArgs().WillReturnRows(dateRows)
