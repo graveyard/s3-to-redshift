@@ -205,35 +205,41 @@ func runCopy(
 		return fmt.Errorf("err committing transaction: %s", err)
 	}
 
-	if truncate {
-		// If we've truncated the table we should run vacuum to clear out the old data
-		// Only one vacuum can be run at a time, so we're going to throw this over the wall to
-		// redshift-vacuum and use gearman-admin as a queueing service.
-		if len(gearmanAdminURL) == 0 {
-			log.Fatalf("Unable to post vacuum job to %s", vacuumWorker)
-		} else {
-			log.Println("Submitting job to Gearman admin")
+	// There's a good chance we've deleted some data in the table here (e.g. a stream load,
+	// truncate, or update historical set that exists). Run a vacuum to clear out the old data.
+	// Only one vacuum can be run at a time, so we're going to throw this over the wall to
+	// redshift-vacuum and use gearman-admin as a queueing service.
+	if len(gearmanAdminURL) == 0 {
+		log.Fatalf("Unable to post vacuum job to %s", vacuumWorker)
+	} else {
+		log.Println("Submitting job to Gearman admin")
 
-			// N.B. We need to pass backslashes to escape the quotation marks as required
-			// by Golang's os.Args for command line arguments
-			payload, err := json.Marshal(map[string]string{
+		// N.B. We need to pass backslashes to escape the quotation marks as required
+		// by Golang's os.Args for command line arguments
+		payload, err := json.Marshal(map[string]string{
+			"delete": inputConf.Schema + `."` + inputTable.Name + `"`,
+		})
+		// If we truncated, run an analyze as well
+		if truncate {
+			payload, err = json.Marshal(map[string]string{
 				"analyze": inputConf.Schema + `."` + inputTable.Name + `"`,
 			})
-			if err != nil {
-				log.Fatalf("Error creating new payload: %s", err)
-			}
+		}
 
-			client := &http.Client{}
-			endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
-			req, err := http.NewRequest("POST", endpoint, bytes.NewReader(payload))
-			if err != nil {
-				log.Fatalf("Error creating new request: %s", err)
-			}
-			req.Header.Add("Content-Type", "text/plain")
-			_, err = client.Do(req)
-			if err != nil {
-				log.Fatalf("Error submitting job: %s", err)
-			}
+		if err != nil {
+			log.Fatalf("Error creating new payload: %s", err)
+		}
+
+		client := &http.Client{}
+		endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
+		req, err := http.NewRequest("POST", endpoint, bytes.NewReader(payload))
+		if err != nil {
+			log.Fatalf("Error creating new request: %s", err)
+		}
+		req.Header.Add("Content-Type", "text/plain")
+		_, err = client.Do(req)
+		if err != nil {
+			log.Fatalf("Error submitting job: %s", err)
 		}
 	}
 	return nil
