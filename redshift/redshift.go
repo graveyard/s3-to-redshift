@@ -14,6 +14,7 @@ import (
 
 	"github.com/Clever/pathio"
 	multierror "github.com/hashicorp/go-multierror"
+
 	// Use our own version of the postgres library so we get keep-alive support.
 	// See https://github.com/Clever/pq/pull/1
 	"github.com/Clever/pq"
@@ -469,7 +470,7 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 		jsonPathsSQL = "'auto'"
 		delimSQL = ""
 	}
-	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s %s %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON %s %s %s`,
+	copySQL := fmt.Sprintf(`COPY "%s"."%s" FROM '%s' WITH %s %s %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON %s %s %s`,
 		f.Schema, f.Table, f.GetDataFilename(), gzipSQL, jsonSQL, jsonPathsSQL, f.Bucket.Region, manifestSQL, credSQL, delimSQL)
 	log.Printf("Running command: %s", copySQL)
 	// can't use prepare b/c of redshift-specific syntax that postgres does not like

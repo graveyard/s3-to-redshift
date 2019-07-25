@@ -292,7 +292,7 @@ func TestJSONCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_iam_role=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON CREDENTIALS 'aws_iam_role=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
@@ -315,7 +315,7 @@ func TestJSONCopy(t *testing.T) {
 	}
 
 	// test with neither creds nor GZIP
-	sql = `COPY "%s"."%s" FROM '%s' WITH%s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON`
+	sql = `COPY "%s"."%s" FROM '%s' WITH%s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON`
 	execRegex = fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(), "", region)
 
 	db, mock, err = sqlmock.New()
@@ -353,7 +353,7 @@ func TestJSONManifestCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
@@ -414,7 +414,7 @@ func TestCSVCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVQUOTES ESCAPE EMPTYASNULL ACCEPTANYDATE`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVQUOTES ESCAPE EMPTYASNULL ACCEPTANYDATE`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
@@ -437,7 +437,7 @@ func TestCSVCopy(t *testing.T) {
 	}
 
 	// test with neither creds nor GZIP
-	sql = `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
+	sql = `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
 	execRegex = fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(), "", region)
 
 	db, mock, err = sqlmock.New()
@@ -475,7 +475,7 @@ func TestCSVManifestCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON COMPUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
