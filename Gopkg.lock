@@ -18,9 +18,13 @@
   revision = "c9ab5faa09d73e85523f3540db96295eef381a91"
 
 [[projects]]
+  branch = "master"
   name = "github.com/Clever/pq"
-  packages = ["."]
-  revision = "84d549efdf0e2928c2be08bdcc3a1b0cf8ef2f45"
+  packages = [
+    ".",
+    "oid"
+  ]
+  revision = "278004c23b92efa6c00c64eb17d3a3be8201e981"
 
 [[projects]]
   name = "github.com/DATA-DOG/go-sqlmock"
@@ -86,14 +90,6 @@
   name = "github.com/kardianos/osext"
   packages = ["."]
   revision = "c2c54e542fb797ad986b31721e1baedf214ca413"
-
-[[projects]]
-  name = "github.com/lib/pq"
-  packages = [
-    ".",
-    "oid"
-  ]
-  revision = "8ad2b298cadd691a77015666a5372eae5dbfac8f"
 
 [[projects]]
   name = "github.com/segmentio/go-env"
