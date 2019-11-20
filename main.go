@@ -216,16 +216,16 @@ func runCopy(
 
 		// N.B. We need to pass backslashes to escape the quotation marks as required
 		// by Golang's os.Args for command line arguments
-		payload, err := json.Marshal(map[string]string{
-			"delete": inputConf.Schema + `."` + inputTable.Name + `"`,
-		})
+		vacuumArgs := map[string]string{
+			"tables":      inputConf.Schema + `."` + inputTable.Name + `"`,
+			"vacuum_mode": "delete",
+		}
 		// If we truncated, run an analyze as well
 		if truncate {
-			payload, err = json.Marshal(map[string]string{
-				"analyze": inputConf.Schema + `."` + inputTable.Name + `"`,
-			})
+			vacuumArgs["analyze_mode"] = "full"
 		}
 
+		payload, err := json.Marshal(vacuumArgs)
 		if err != nil {
 			log.Fatalf("Error creating new payload: %s", err)
 		}
