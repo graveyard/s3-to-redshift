@@ -37,7 +37,7 @@ var (
 	user            = env.MustGet("REDSHIFT_USER")
 	pwd             = env.MustGet("REDSHIFT_PASSWORD")
 	redshiftRoleARN = env.MustGet("REDSHIFT_ROLE_ARN")
-	vacuumWorker    = env.MustGet("VACUUM_WORKER")
+	cleanupWorker   = env.MustGet("CLEANUP_WORKER")
 
 	// payloadForSignalFx holds a subset of the job payload that
 	// we want to alert on as a dimension in SignalFx.
@@ -210,28 +210,28 @@ func runCopy(
 	// Only one vacuum can be run at a time, so we're going to throw this over the wall to
 	// redshift-vacuum and use gearman-admin as a queueing service.
 	if len(gearmanAdminURL) == 0 {
-		log.Fatalf("Unable to post vacuum job to %s", vacuumWorker)
+		log.Fatalf("Unable to post vacuum-analyze job to %s", cleanupWorker)
 	} else {
 		log.Println("Submitting job to Gearman admin")
 
 		// N.B. We need to pass backslashes to escape the quotation marks as required
 		// by Golang's os.Args for command line arguments
-		vacuumArgs := map[string]string{
+		cleanupArgs := map[string]string{
 			"tables":      inputConf.Schema + `."` + inputTable.Name + `"`,
 			"vacuum_mode": "delete",
 		}
 		// If we truncated, run an analyze as well
 		if truncate {
-			vacuumArgs["analyze_mode"] = "full"
+			cleanupArgs["analyze_mode"] = "full"
 		}
 
-		payload, err := json.Marshal(vacuumArgs)
+		payload, err := json.Marshal(cleanupArgs)
 		if err != nil {
 			log.Fatalf("Error creating new payload: %s", err)
 		}
 
 		client := &http.Client{}
-		endpoint := gearmanAdminURL + fmt.Sprintf("/%s", vacuumWorker)
+		endpoint := gearmanAdminURL + fmt.Sprintf("/%s", cleanupWorker)
 		req, err := http.NewRequest("POST", endpoint, bytes.NewReader(payload))
 		if err != nil {
 			log.Fatalf("Error creating new request: %s", err)

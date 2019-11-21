@@ -16,7 +16,7 @@ $(eval $(call golang-version-check,1.12))
 export GEARMAN_ADMIN_PATH ?= x
 export GEARMAN_ADMIN_USER ?= x
 export GEARMAN_ADMIN_PASS ?= x
-export VACUUM_WORKER ?= x
+export CLEANUP_WORKER ?= x
 export REDSHIFT_PASSWORD ?= x
 export REDSHIFT_USER ?= x
 export REDSHIFT_DB ?= x

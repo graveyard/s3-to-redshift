@@ -11,7 +11,7 @@ env:
 - REDSHIFT_HOST
 - REDSHIFT_ROLE_ARN
 - REDSHIFT_DB
-- VACUUM_WORKER
+- CLEANUP_WORKER
 - WORKER_NAME
 dependencies:
 - gearman-admin
@@ -26,7 +26,7 @@ aws:
     - Workflows
   s3:
     read:
-      - long-term-metrics 
+      - long-term-metrics
 autoscaling:
   metric: active-percent
   metric_target: 70
