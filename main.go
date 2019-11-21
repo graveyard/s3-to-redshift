@@ -217,7 +217,7 @@ func runCopy(
 		// N.B. We need to pass backslashes to escape the quotation marks as required
 		// by Golang's os.Args for command line arguments
 		cleanupArgs := map[string]string{
-			"tables":      inputConf.Schema + `."` + inputTable.Name + `"`,
+			"targets":      inputConf.Schema + `."` + inputTable.Name + `"`,
 			"vacuum_mode": "delete",
 		}
 		// If we truncated, run an analyze as well
