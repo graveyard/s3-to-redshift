@@ -163,18 +163,19 @@ func (r *Redshift) GetTableFromConf(f s3filepath.S3File) (*Table, error) {
 	}
 
 	// data we want is nested in a map - possible to have multiple tables in a conf file
-	t, ok := tempSchema[f.Table]
-	if !ok {
-		return nil, fmt.Errorf("can't find table in conf")
-	}
-	if t.Meta.Schema != f.Schema {
-		return nil, fmt.Errorf("mismatched schema, conf: %s, file: %s", t.Meta.Schema, f.Schema)
-	}
-	if t.Meta.DataDateColumn == "" {
-		return nil, fmt.Errorf("data date column must be set")
-	}
+	for _, config := range tempSchema {
+		if config.Name == f.Table {
+			if config.Meta.Schema != f.Schema {
+				return nil, fmt.Errorf("mismatched schema, conf: %s, file: %s", config.Meta.Schema, f.Schema)
+			}
+			if config.Meta.DataDateColumn == "" {
+				return nil, fmt.Errorf("data date column must be set")
+			}
 
-	return &t, nil
+			return &config, nil
+		}
+	}
+	return nil, fmt.Errorf("can't find table in conf")
 }
 
 // GetTableMetadata looks for a table and returns both the Table representation
