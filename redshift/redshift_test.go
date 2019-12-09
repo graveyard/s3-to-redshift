@@ -24,8 +24,9 @@ var (
 )
 
 // helper for TestTableFromConf - marshals the table into a file
-func getTempConfFromTable(name string, table Table) (string, error) {
-	toMarshal := map[string]Table{name: table}
+func getTempConfFromTable(configKey, name string, table Table) (string, error) {
+	table.Name = name
+	toMarshal := map[string]Table{configKey: table}
 	file, err := ioutil.TempFile(os.TempDir(), "testconf")
 	if err != nil {
 		return "", err
@@ -45,7 +46,7 @@ func getTempConfFromTable(name string, table Table) (string, error) {
 func TestTableFromConf(t *testing.T) {
 	db := Redshift{nil, textCtx}
 
-	schema, table := "testschema", "testtable"
+	configKey, schema, table := "testConfKey", "testschema", "testtable"
 	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
 	b := s3filepath.S3Bucket{
 		Name:            bucket,
@@ -70,7 +71,7 @@ func TestTableFromConf(t *testing.T) {
 	}
 
 	// valid
-	fileName, err := getTempConfFromTable(table, matchingTable)
+	fileName, err := getTempConfFromTable(configKey, table, matchingTable)
 	assert.NoError(t, err)
 	f.ConfFile = fileName
 	returnedTable, err := db.GetTableFromConf(f)
@@ -78,7 +79,7 @@ func TestTableFromConf(t *testing.T) {
 	assert.Equal(t, matchingTable, *returnedTable)
 
 	// one which doesn't have the target table
-	fileName, err = getTempConfFromTable("notthetable", matchingTable)
+	fileName, err = getTempConfFromTable("notthetable", "notthetable", matchingTable)
 	assert.NoError(t, err)
 	f.ConfFile = fileName
 	returnedTable, err = db.GetTableFromConf(f)
@@ -89,7 +90,7 @@ func TestTableFromConf(t *testing.T) {
 	// one which has a mismatched schema
 	badSchema := matchingTable
 	badSchema.Meta.Schema = "notthesameschema"
-	fileName, err = getTempConfFromTable(table, badSchema)
+	fileName, err = getTempConfFromTable(configKey, table, badSchema)
 	assert.NoError(t, err)
 	f.ConfFile = fileName
 	returnedTable, err = db.GetTableFromConf(f)
@@ -100,7 +101,7 @@ func TestTableFromConf(t *testing.T) {
 	// one without a data date column
 	noDataDateCol := matchingTable
 	noDataDateCol.Meta.DataDateColumn = ""
-	fileName, err = getTempConfFromTable(table, noDataDateCol)
+	fileName, err = getTempConfFromTable(configKey, table, noDataDateCol)
 	assert.NoError(t, err)
 	f.ConfFile = fileName
 	returnedTable, err = db.GetTableFromConf(f)
