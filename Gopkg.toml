@@ -16,8 +16,8 @@
   version = "1.13.0"
 
 [[constraint]]
-  name = "github.com/clever/analytics-util"
-  version = "1.0.0"
+  name = "github.com/Clever/analytics-util"
+  version = "1.2.0"
 
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"
