@@ -219,10 +219,10 @@ func runCopy(
 		cleanupArgs := map[string]string{
 			"targets":     inputConf.Schema + `."` + inputTable.Name + `"`,
 			"vacuum_mode": "delete",
-		}
-		// If we truncated, run an analyze as well
-		if truncate {
-			cleanupArgs["analyze_mode"] = "full"
+			// If we truncated, analyze will run regardless since 100% of the rows have changed. Otherwise,
+			// only analyze if we've changed enough rows (threshold > 1%)
+			"analyze_mode":      "full",
+			"analyze_threshold": "1",
 		}
 
 		payload, err := json.Marshal(cleanupArgs)
