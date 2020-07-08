@@ -350,11 +350,11 @@ func (r *Redshift) UpdateTable(tx *sql.Tx, inputTable, targetTable Table) error 
 // columns at the end that the target table does not then the appropriate alter tables sql commands are
 // returned.
 func checkSchemas(inputTable, targetTable Table) ([]string, error) {
-	// If the schema is mongo then we know the input files are json so ordering doesn't matter. At
+	// If the schema is mongo_raw then we know the input files are json so ordering doesn't matter. At
 	// some point we could handle this in a more general way by checking if the input files are json.
 	// This wouldn't be too hard, but we would have to peak in the manifest file to check if all the
 	// files references are json.
-	if targetTable.Meta.Schema == "mongo" {
+	if targetTable.Meta.Schema == "mongo_raw" {
 		return checkColumnsWithoutOrdering(inputTable, targetTable)
 	}
 	return checkColumnsAndOrdering(inputTable, targetTable)

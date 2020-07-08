@@ -303,7 +303,7 @@ func main() {
 	}
 
 	flags := payload{ // Specifying defaults:
-		InputSchemaName: "mongo",
+		InputSchemaName: "mongo_raw",
 		InputTables:     "",
 		InputBucket:     "",
 		Truncate:        false,
