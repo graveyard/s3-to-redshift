@@ -1,5 +1,9 @@
 
 [[constraint]]
+  name = "github.com/Clever/analytics-util"
+  version = "1.2.0"
+
+[[constraint]]
   name = "github.com/Clever/discovery-go"
 
 [[constraint]]
@@ -16,10 +20,6 @@
   version = "1.13.0"
 
 [[constraint]]
-  name = "github.com/Clever/analytics-util"
-  version = "1.2.0"
-
-[[constraint]]
   name = "github.com/hashicorp/go-multierror"
 
 [[constraint]]
@@ -33,7 +33,7 @@
 
 [[constraint]]
   name = "gopkg.in/Clever/kayvee-go.v6"
-  version = "6.2.0"
+  version = "=6.24.0"
 
 [[constraint]]
   name = "gopkg.in/yaml.v2"
