@@ -2,36 +2,47 @@
 
 
 [[projects]]
+  digest = "1:88952e16ee4552b16c1c25214516f7c445f8f3ced59b4cd94616c87b6021fc39"
   name = "github.com/Clever/analytics-util"
   packages = ["analyticspipeline"]
+  pruneopts = ""
   revision = "555aff11c52e6cc91b2b96440bac57ce05c8fac3"
   version = "1.2.0"
 
 [[projects]]
+  digest = "1:3a16914bc51681217b6e517c282cad959ad083dd73db9800a0c6480872a74786"
   name = "github.com/Clever/discovery-go"
   packages = ["."]
+  pruneopts = ""
   revision = "12684ef3012bf55b9827a6e7c96503e37b0d8379"
 
 [[projects]]
+  digest = "1:7373706cfad70d26e208f3bb82e8a545a8f6b3aff49a029cf09866c2bf8a5428"
   name = "github.com/Clever/pathio"
   packages = ["."]
+  pruneopts = ""
   revision = "c9ab5faa09d73e85523f3540db96295eef381a91"
 
 [[projects]]
   branch = "master"
+  digest = "1:a36386e1791929528fc7edf26d8b962231267b9d5fa14f7a7a543f20bd6708f2"
   name = "github.com/Clever/pq"
   packages = [
     ".",
-    "oid"
+    "oid",
   ]
+  pruneopts = ""
   revision = "278004c23b92efa6c00c64eb17d3a3be8201e981"
 
 [[projects]]
+  digest = "1:f476a661f9d57f99aa3f35cffb2b67576ade3bd7a5f711266cc6ce2723f5de7a"
   name = "github.com/DATA-DOG/go-sqlmock"
   packages = ["."]
+  pruneopts = ""
   revision = "081a694b0af16f86d406ac2832433a98a6fa625a"
 
 [[projects]]
+  digest = "1:a6a7dae645592151d289d22b8bba39e9a91527737c6b58aaf5c489efaae43ec7"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -59,91 +70,135 @@
     "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
     "service/s3",
-    "service/sts"
+    "service/sts",
   ]
+  pruneopts = ""
   revision = "63324a33d7e42a386c04d4daec764a3de243492e"
   version = "v1.13.0"
 
 [[projects]]
+  digest = "1:a00483fe4106b86fb1187a92b5cf6915c85f294ed4c129ccbe7cb1f1a06abd46"
   name = "github.com/go-ini/ini"
   packages = ["."]
+  pruneopts = ""
   revision = "32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a"
   version = "v1.32.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:304c322b62533a48ac052ffee80f67087fce1bc07186cd4e610a1b0e77765836"
   name = "github.com/hashicorp/errwrap"
   packages = ["."]
+  pruneopts = ""
   revision = "7554cd9344cec97297fa6649b055a8c98c2a1e55"
 
 [[projects]]
+  digest = "1:96cb1c8da2cb4c4a9f4b6a0b582478bd6114b8dbb99d213a4bb88fdcb83e6f77"
   name = "github.com/hashicorp/go-multierror"
   packages = ["."]
+  pruneopts = ""
   revision = "ed905158d87462226a13fe39ddf685ea65f1c11f"
 
 [[projects]]
+  digest = "1:6f49eae0c1e5dab1dafafee34b207aeb7a42303105960944828c2079b92fc88e"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
+  pruneopts = ""
   revision = "0b12d6b5"
 
 [[projects]]
+  digest = "1:b8188f80536b9ff4db3503495e308c5c9913c71f7bb77c91a1ec842cd260e3e3"
   name = "github.com/kardianos/osext"
   packages = ["."]
+  pruneopts = ""
   revision = "c2c54e542fb797ad986b31721e1baedf214ca413"
 
 [[projects]]
+  digest = "1:0407753f9ff874ffd4a1ce4fe775ab79e49128d7d626412ed0c46633274395e2"
   name = "github.com/segmentio/go-env"
   packages = ["."]
+  pruneopts = ""
   revision = "7c67b4ee2d8065b4238c1fcc7a520fd0f79feefc"
 
 [[projects]]
+  digest = "1:42e41b674d386b146dfb2f710ac83e32829cc12cf56ac388c7fb2b8675727932"
   name = "github.com/stretchr/testify"
   packages = ["assert"]
+  pruneopts = ""
   revision = "b8dc1cecf15bdaf1988d9e87aa7cd98d899a06d6"
 
 [[projects]]
+  digest = "1:51f81b00e2e19324358c998712da59c5496f1dea6040f80c2c489d1899a350b6"
   name = "github.com/xeipuuv/gojsonpointer"
   packages = ["."]
+  pruneopts = ""
   revision = "e0fe6f68307607d540ed8eac07a342c33fa1b54a"
 
 [[projects]]
   branch = "master"
+  digest = "1:feb667646650e600036a4731f959e746eb755970fc2c8a3d54c66a0cde7ac69d"
   name = "github.com/xeipuuv/gojsonreference"
   packages = ["."]
+  pruneopts = ""
   revision = "e02fc20de94c78484cd5ffb007f8af96be030a45"
 
 [[projects]]
+  branch = "master"
+  digest = "1:225b26e2d1bcccbb48495d411cd38c73a5abd82ead929364b2bc73f1b3172aba"
   name = "github.com/xeipuuv/gojsonschema"
   packages = ["."]
-  revision = "59f99ebfe5f712a0055e321231fc3be94e4e00b2"
+  pruneopts = ""
+  revision = "065759f9c3d72653843069184bab4f5622926edf"
 
 [[projects]]
+  digest = "1:16b3dba568430162ef141a8cd92c355b71b04afdea2516a1b94cb9a40b8f7007"
   name = "gopkg.in/Clever/kayvee-go.v3"
   packages = [
     ".",
-    "logger"
+    "logger",
   ]
+  pruneopts = ""
   revision = "d49feee080e8e32e01a5f415cf1f9dc264dfb043"
   version = "v3.0.0"
 
 [[projects]]
+  digest = "1:0923ed679d96b9e53b8c43892e2094ebb5dccd0a66709b20c90f43c37ff71ff1"
   name = "gopkg.in/Clever/kayvee-go.v6"
   packages = [
     ".",
     "logger",
-    "router"
+    "router",
   ]
-  revision = "fa278c9c7f83580b15c163c1efffe6fb4f2e3989"
-  version = "v6.2.0"
+  pruneopts = ""
+  revision = "1c544ce9daf62e3673f4f1ba0bffde53cd13f502"
+  version = "v6.24.0"
 
 [[projects]]
+  branch = "v2"
+  digest = "1:0963c61acf879ae8b78a659a2864016eb61020c46c93f402041684b80d5963b6"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
+  pruneopts = ""
+  revision = "b893565b90ca5ebaabd27e535c0e56f97856e5ff"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b425e1dce65e39078970aea29199089b0bd27ed569d14bfb3fbedfbcb8867462"
+  input-imports = [
+    "github.com/Clever/analytics-util/analyticspipeline",
+    "github.com/Clever/discovery-go",
+    "github.com/Clever/pathio",
+    "github.com/Clever/pq",
+    "github.com/DATA-DOG/go-sqlmock",
+    "github.com/aws/aws-sdk-go/aws",
+    "github.com/aws/aws-sdk-go/aws/session",
+    "github.com/aws/aws-sdk-go/service/s3",
+    "github.com/hashicorp/go-multierror",
+    "github.com/kardianos/osext",
+    "github.com/segmentio/go-env",
+    "github.com/stretchr/testify/assert",
+    "gopkg.in/Clever/kayvee-go.v6/logger",
+    "gopkg.in/yaml.v2",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
