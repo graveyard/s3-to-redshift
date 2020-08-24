@@ -448,7 +448,7 @@ func checkColumn(inCol ColInfo, targetCol ColInfo) error {
 func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds, gzip bool) error {
 	var credSQL string
 	if creds {
-		credSQL = fmt.Sprintf(`CREDENTIALS 'aws_iam_role=%s'`, f.Bucket.RedshiftRoleARN)
+		credSQL = fmt.Sprintf(`IAM_ROLE '%s'`, f.Bucket.RedshiftRoleARN)
 	}
 	gzipSQL := ""
 	if gzip {
