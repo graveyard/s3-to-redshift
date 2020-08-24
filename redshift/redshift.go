@@ -25,6 +25,7 @@ import (
 type dbExecCloser interface {
 	Close() error
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 }
@@ -476,6 +477,31 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 	log.Printf("Running command: %s", copySQL)
 	// can't use prepare b/c of redshift-specific syntax that postgres does not like
 	_, err := tx.ExecContext(r.ctx, copySQL)
+	return err
+}
+
+// UpdateLatencyInfo updates the latency table with the current time to indicate
+// that the table data has been updated
+func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
+	dest := fmt.Sprintf("%s.%s", table.Meta.Schema, table.Name)
+
+	// Insert a row for the latencies table if it doesn't already exist.
+	// We do this outside of the transaction, so that we can get a row-level lock with the next command.
+	_, err := r.ExecContext(r.ctx, fmt.Sprintf(
+		`INSERT INTO latencies (name) (
+				SELECT name FROM latencies
+			UNION
+				SELECT '%s' AS name
+			EXCEPT
+				SELECT name FROM latencies
+		)`, dest))
+
+	// Update the latency table with the current timestamp, for the last run.
+	// We *do* want this one inside the transaction!
+	_, err = tx.ExecContext(r.ctx, fmt.Sprintf(
+		"UPDATE latencies SET last_update = current_timestamp WHERE name = '%s'",
+		dest))
+
 	return err
 }
 

@@ -201,6 +201,11 @@ func runCopy(
 		return fmt.Errorf("err running copy: %s", err)
 	}
 
+	// Update the latency info table so we have an easier record of the last update.
+	if err := db.UpdateLatencyInfo(tx, *targetTable); err != nil {
+		return fmt.Errorf("err updating latency info: %s", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("err committing transaction: %s", err)
 	}
