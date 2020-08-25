@@ -12,6 +12,7 @@ env:
 - REDSHIFT_ROLE_ARN
 - REDSHIFT_DB
 - CLEANUP_WORKER
+- FIREHOSE_EVENTS_ANALYTICS_PIPELINE_JOB_RUNS
 dependencies:
 - gearman-admin
 team: eng-ip

@@ -8,3 +8,10 @@ routes:
       dimensions: [ "source", "payload" ]
       value: "value"
       stat_type: "gauge"
+  analytics-run-latency-firehose:
+    matchers:
+      title: ["analytics-run-latency"]
+    output:
+      type: "analytics"
+      series: "${FIREHOSE_EVENTS_ANALYTICS_PIPELINE_JOB_RUNS}"
+

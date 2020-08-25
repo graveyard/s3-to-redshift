@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	kvlogger "gopkg.in/Clever/kayvee-go.v6/logger"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
@@ -19,6 +20,7 @@ import (
 	// See https://github.com/Clever/pq/pull/1
 	"github.com/Clever/pq"
 
+	"github.com/Clever/s3-to-redshift/logger"
 	"github.com/Clever/s3-to-redshift/s3filepath"
 )
 
@@ -34,7 +36,11 @@ type dbExecCloser interface {
 // We additionally give it a context for the duration of the job
 type Redshift struct {
 	dbExecCloser
-	ctx context.Context
+	ctx  context.Context
+	host string
+	port string
+	db   string
+	user string
 }
 
 // Table is our representation of a Redshift table
@@ -136,7 +142,14 @@ func NewRedshift(ctx context.Context, host, port, db, user, password string, tim
 	if err := sqldb.Ping(); err != nil {
 		return nil, err
 	}
-	return &Redshift{sqldb, ctx}, nil
+	return &Redshift{
+		dbExecCloser: sqldb,
+		ctx:          ctx,
+		host:         host,
+		port:         port,
+		db:           db,
+		user:         user,
+	}, nil
 }
 
 // Begin wraps a new transaction in the databases context
@@ -496,13 +509,31 @@ func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
 				SELECT name FROM latencies
 		)`, dest))
 
+	// Get the last latency value out of the table, for logging. This doesn't have to be in the transaction.
+	latencyQuery := fmt.Sprintf("SELECT last_update FROM latencies WHERE name = '%s'", dest)
+	var t pq.NullTime
+	err = r.QueryRowContext(r.ctx, latencyQuery).Scan(&t)
+	// this will either return a value or null if no data, rather than no rows, because we inserted earleir
+	if err != nil {
+		return fmt.Errorf("error scanning latency table for %s: %s", dest, err)
+	}
+
 	// Update the latency table with the current timestamp, for the last run.
 	// We *do* want this one inside the transaction!
 	_, err = tx.ExecContext(r.ctx, fmt.Sprintf(
 		"UPDATE latencies SET last_update = current_timestamp WHERE name = '%s'",
 		dest))
+	if err != nil {
+		return err
+	}
 
-	return err
+	logger.GetLogger().InfoD("analytics-run-latency", kvlogger.M{
+		"database":     fmt.Sprintf("%s/%s", r.host, r.db),
+		"destination":  dest,
+		"previous_run": t.Time,
+	})
+
+	return nil
 }
 
 // Truncate deletes all items from a table, given a transaction, a schema string and a table name
