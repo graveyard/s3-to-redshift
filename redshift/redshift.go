@@ -499,8 +499,7 @@ func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
 	dest := fmt.Sprintf("%s.%s", table.Meta.Schema, table.Name)
 
 	// Insert a row for the latencies table if it doesn't already exist.
-	// We do this outside of the transaction, so that we can get a row-level lock with the next command.
-	_, err := r.ExecContext(r.ctx, fmt.Sprintf(
+	_, err := tx.ExecContext(r.ctx, fmt.Sprintf(
 		`INSERT INTO latencies (name) (
 				SELECT name FROM latencies
 			UNION
@@ -509,17 +508,17 @@ func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
 				SELECT name FROM latencies
 		)`, dest))
 
-	// Get the last latency value out of the table, for logging. This doesn't have to be in the transaction.
+	// Get the last latency value out of the table, for logging.
 	latencyQuery := fmt.Sprintf("SELECT last_update FROM latencies WHERE name = '%s'", dest)
 	var t pq.NullTime
-	err = r.QueryRowContext(r.ctx, latencyQuery).Scan(&t)
+	err = tx.QueryRowContext(r.ctx, latencyQuery).Scan(&t)
 	// this will either return a value or null if no data, rather than no rows, because we inserted earleir
 	if err != nil {
 		return fmt.Errorf("error scanning latency table for %s: %s", dest, err)
 	}
 
 	// Update the latency table with the current timestamp, for the last run.
-	// We *do* want this one inside the transaction!
+	// This one definitely needs to be inside the transaction!
 	_, err = tx.ExecContext(r.ctx, fmt.Sprintf(
 		"UPDATE latencies SET last_update = current_timestamp WHERE name = '%s'",
 		dest))
