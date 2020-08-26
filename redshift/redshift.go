@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	kvlogger "gopkg.in/Clever/kayvee-go.v6/logger"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/Clever/pathio"
@@ -19,12 +20,14 @@ import (
 	// See https://github.com/Clever/pq/pull/1
 	"github.com/Clever/pq"
 
+	"github.com/Clever/s3-to-redshift/logger"
 	"github.com/Clever/s3-to-redshift/s3filepath"
 )
 
 type dbExecCloser interface {
 	Close() error
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 }
@@ -33,7 +36,11 @@ type dbExecCloser interface {
 // We additionally give it a context for the duration of the job
 type Redshift struct {
 	dbExecCloser
-	ctx context.Context
+	ctx  context.Context
+	host string
+	port string
+	db   string
+	user string
 }
 
 // Table is our representation of a Redshift table
@@ -135,7 +142,14 @@ func NewRedshift(ctx context.Context, host, port, db, user, password string, tim
 	if err := sqldb.Ping(); err != nil {
 		return nil, err
 	}
-	return &Redshift{sqldb, ctx}, nil
+	return &Redshift{
+		dbExecCloser: sqldb,
+		ctx:          ctx,
+		host:         host,
+		port:         port,
+		db:           db,
+		user:         user,
+	}, nil
 }
 
 // Begin wraps a new transaction in the databases context
@@ -448,7 +462,7 @@ func checkColumn(inCol ColInfo, targetCol ColInfo) error {
 func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds, gzip bool) error {
 	var credSQL string
 	if creds {
-		credSQL = fmt.Sprintf(`CREDENTIALS 'aws_iam_role=%s'`, f.Bucket.RedshiftRoleARN)
+		credSQL = fmt.Sprintf(`IAM_ROLE '%s'`, f.Bucket.RedshiftRoleARN)
 	}
 	gzipSQL := ""
 	if gzip {
@@ -477,6 +491,49 @@ func (r *Redshift) Copy(tx *sql.Tx, f s3filepath.S3File, delimiter string, creds
 	// can't use prepare b/c of redshift-specific syntax that postgres does not like
 	_, err := tx.ExecContext(r.ctx, copySQL)
 	return err
+}
+
+// UpdateLatencyInfo updates the latency table with the current time to indicate
+// that the table data has been updated
+func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
+	dest := fmt.Sprintf("%s.%s", table.Meta.Schema, table.Name)
+
+	// Insert a row for the latencies table if it doesn't already exist.
+	// We do this outside of the transaction, so that we can get a row-level lock with the next command.
+	_, err := r.ExecContext(r.ctx, fmt.Sprintf(
+		`INSERT INTO latencies (name) (
+				SELECT name FROM latencies
+			UNION
+				SELECT '%s' AS name
+			EXCEPT
+				SELECT name FROM latencies
+		)`, dest))
+
+	// Get the last latency value out of the table, for logging. This doesn't have to be in the transaction.
+	latencyQuery := fmt.Sprintf("SELECT last_update FROM latencies WHERE name = '%s'", dest)
+	var t pq.NullTime
+	err = r.QueryRowContext(r.ctx, latencyQuery).Scan(&t)
+	// this will either return a value or null if no data, rather than no rows, because we inserted earleir
+	if err != nil {
+		return fmt.Errorf("error scanning latency table for %s: %s", dest, err)
+	}
+
+	// Update the latency table with the current timestamp, for the last run.
+	// We *do* want this one inside the transaction!
+	_, err = tx.ExecContext(r.ctx, fmt.Sprintf(
+		"UPDATE latencies SET last_update = current_timestamp WHERE name = '%s'",
+		dest))
+	if err != nil {
+		return err
+	}
+
+	logger.GetLogger().InfoD("analytics-run-latency", kvlogger.M{
+		"database":     fmt.Sprintf("%s/%s", r.host, r.db),
+		"destination":  dest,
+		"previous_run": t.Time,
+	})
+
+	return nil
 }
 
 // Truncate deletes all items from a table, given a transaction, a schema string and a table name

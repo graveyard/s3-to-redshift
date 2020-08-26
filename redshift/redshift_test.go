@@ -44,7 +44,7 @@ func getTempConfFromTable(configKey, name string, table Table) (string, error) {
 }
 
 func TestTableFromConf(t *testing.T) {
-	db := Redshift{nil, textCtx}
+	db := Redshift{dbExecCloser: nil, ctx: textCtx}
 
 	configKey, schema, table := "testConfKey", "testschema", "testtable"
 	bucket, region, redshiftRoleARN := "bucket", "region", "redshiftRoleARN"
@@ -137,7 +137,7 @@ func TestGetTableMetadata(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	// test normal operation
 	//   - test existence of table
@@ -228,7 +228,7 @@ func TestCreateTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectPrepare("This needs to be here, but not evaluated")
@@ -261,7 +261,7 @@ func TestNoKeyCreateTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 
@@ -293,15 +293,14 @@ func TestJSONCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON CREDENTIALS 'aws_iam_role=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON IAM_ROLE '%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
-
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
@@ -322,7 +321,7 @@ func TestJSONCopy(t *testing.T) {
 	db, mock, err = sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift = Redshift{db, textCtx}
+	mockRedshift = Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -354,14 +353,14 @@ func TestJSONManifestCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s'`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s JSON 'auto' REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON manifest IAM_ROLE '%s'`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -382,7 +381,7 @@ func TestTruncate(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectPrepare(fmt.Sprintf(`DELETE FROM "%s"."%s"`, schema, table))
@@ -415,14 +414,14 @@ func TestCSVCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVQUOTES ESCAPE EMPTYASNULL ACCEPTANYDATE`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON IAM_ROLE '%s' DELIMITER AS '|' REMOVQUOTES ESCAPE EMPTYASNULL ACCEPTANYDATE`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -444,7 +443,7 @@ func TestCSVCopy(t *testing.T) {
 	db, mock, err = sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift = Redshift{db, textCtx}
+	mockRedshift = Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -476,14 +475,14 @@ func TestCSVManifestCopy(t *testing.T) {
 		ConfFile: "",
 	}
 	// test with creds and GZIP
-	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON manifest CREDENTIALS 'aws_iam_role=%s' DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
+	sql := `COPY "%s"."%s" FROM '%s' WITH %s REGION '%s' TIMEFORMAT 'auto' TRUNCATECOLUMNS STATUPDATE ON manifest IAM_ROLE '%s' DELIMITER AS '|' REMOVEQUOTES ESCAPE TRIMBLANKS EMPTYASNULL ACCEPTANYDATE`
 	execRegex := fmt.Sprintf(sql, schema, table, s3File.GetDataFilename(),
 		"GZIP", region, redshiftRoleARN)
 
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	mock.ExpectExec(execRegex).WithArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -518,7 +517,7 @@ func TestUpdateTable(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-	mockRedshift := Redshift{db, textCtx}
+	mockRedshift := Redshift{dbExecCloser: db, ctx: textCtx}
 
 	mock.ExpectBegin()
 	for _, updateSQL := range []string{
