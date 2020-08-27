@@ -499,31 +499,33 @@ func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
 	dest := fmt.Sprintf("%s.%s", table.Meta.Schema, table.Name)
 
 	// Insert a row for the latencies table if it doesn't already exist.
-	// We do this outside of the transaction, so that we can get a row-level lock with the next command.
+	// We do this outside of the transaction, since there's no reason to lock the entire table.
 	_, err := r.ExecContext(r.ctx, fmt.Sprintf(
 		`INSERT INTO latencies (name) (
 				SELECT '%s' AS name
 			EXCEPT
-				SELECT name FROM latencies
-		)`, dest))
+				SELECT name FROM latencies WHERE name = '%s'
+		)`, dest, dest))
 
 	// Get the last latency value out of the table, for logging.
-	// Having this in the transaction seems to help, though it's not clear why.
+	// We should do it in the same place as the insert, otherwise there's a chance serialization ends up without it existing yet.
 	latencyQuery := fmt.Sprintf("SELECT last_update FROM latencies WHERE name = '%s'", dest)
 	var t pq.NullTime
-	err = tx.QueryRowContext(r.ctx, latencyQuery).Scan(&t)
+	err = r.QueryRowContext(r.ctx, latencyQuery).Scan(&t)
 	// this will either return a value or null if no data, rather than no rows, because we inserted earleir
 	if err != nil {
 		return fmt.Errorf("error scanning latency table for %s: %s", dest, err)
 	}
 
 	// Update the latency table with the current timestamp, for the last run.
-	// This one definitely needs to be inside the transaction!
-	_, err = tx.ExecContext(r.ctx, fmt.Sprintf(
+	// This one should be inside the transaction!
+	// TODO: 8/27/2020 Redshift is having some issues with serialization right now (see ticket 7320802091)
+	// so we're going to leave this outside, so it at least updates, if not to the "best" time.
+	_, err = r.ExecContext(r.ctx, fmt.Sprintf(
 		"UPDATE latencies SET last_update = current_timestamp WHERE name = '%s'",
 		dest))
 	if err != nil {
-		return err
+		return fmt.Errorf("error saving new latency to table for %s: %s", dest, err)
 	}
 
 	logger.GetLogger().InfoD("analytics-run-latency", kvlogger.M{
