@@ -504,8 +504,8 @@ func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
 		`INSERT INTO latencies (name) (
 				SELECT '%s' AS name
 			EXCEPT
-				SELECT name FROM latencies
-		)`, dest))
+				SELECT name FROM latencies WHERE name = '%s'
+		)`, dest, dest))
 
 	// Get the last latency value out of the table, for logging.
 	// Having this in the transaction seems to help, though it's not clear why.
@@ -523,7 +523,7 @@ func (r *Redshift) UpdateLatencyInfo(tx *sql.Tx, table Table) error {
 		"UPDATE latencies SET last_update = current_timestamp WHERE name = '%s'",
 		dest))
 	if err != nil {
-		return err
+		return fmt.Errorf("error saving new latency to table for %s: %s", dest, err)
 	}
 
 	logger.GetLogger().InfoD("analytics-run-latency", kvlogger.M{
