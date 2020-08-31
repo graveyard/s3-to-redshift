@@ -100,14 +100,14 @@ const (
       ELSE ''
   END AS default_val,
   f.attnotnull AS not_null,
-  p.contype IS NOT NULL AND p.contype = 'p' AS primary_key,
+  p.contype IS NOT NULL AS primary_key,
   f.attisdistkey AS dist_key,
   f.attsortkeyord AS sort_ord
 FROM pg_attribute f
   JOIN pg_class c ON c.oid = f.attrelid
   LEFT JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = f.attnum
   LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-  LEFT JOIN pg_constraint p ON p.conrelid = c.oid AND f.attnum = ANY (p.conkey)
+  LEFT JOIN pg_constraint p ON p.conrelid = c.oid AND f.attnum = ANY (p.conkey) AND p.contype = 'p'
 WHERE c.relkind = 'r'::char
     AND n.nspname = '%s'  -- Replace with schema name
     AND c.relname = '%s'  -- Replace with table name
