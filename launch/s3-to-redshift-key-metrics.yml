@@ -1,0 +1,29 @@
+run:
+  type: docker
+env:
+- AWS_REGION
+- GEARMAN_ADMIN_USER
+- GEARMAN_ADMIN_PASS
+- GEARMAN_ADMIN_PATH
+- REDSHIFT_USER
+- REDSHIFT_PASSWORD
+- REDSHIFT_PORT
+- REDSHIFT_HOST
+- REDSHIFT_ROLE_ARN
+- REDSHIFT_DB
+- CLEANUP_WORKER
+- FIREHOSE_EVENTS_ANALYTICS_PIPELINE_JOB_RUNS
+dependencies:
+- gearman-admin
+team: eng-ip
+resources:
+  cpu: 0.05
+  max_mem: 0.05
+aws:
+  custom: true
+  managed:
+    clever:
+    - Workflows
+  s3:
+    read:
+      - long-term-metrics
