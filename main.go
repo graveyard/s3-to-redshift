@@ -290,6 +290,7 @@ type payload struct {
 	StreamStart     string `config:"streamStart"`
 	StreamEnd       string `config:"streamEnd"`
 	TargetTimezone  string `config:"timezone"`
+	SkipLoad        bool   `config:"skipLoad"`
 }
 
 // This worker finds the latest file in s3 and uploads it to redshift
@@ -321,6 +322,7 @@ func main() {
 		StreamStart:     "",
 		StreamEnd:       "",
 		TargetTimezone:  "UTC",
+		SkipLoad:        false,
 	}
 
 	nextPayload, err := analyticspipeline.AnalyticsWorker(&flags)
@@ -328,6 +330,13 @@ func main() {
 		log.Fatalf("err: %#v", err)
 	}
 	defer analyticspipeline.PrintPayload(nextPayload)
+
+	// If we're to skip the load, do it early. Don't print out the schema or job finished info.
+	// This wasn't a job that we did anything for.
+	if flags.SkipLoad {
+		// Proceed directly to next job. Do not pass go. Do not collect logs.
+		return
+	}
 
 	payloadForSignalFx = fmt.Sprintf("--schema %s", flags.InputSchemaName)
 	defer logger.JobFinishedEvent(payloadForSignalFx, true)
