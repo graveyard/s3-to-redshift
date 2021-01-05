@@ -15,7 +15,7 @@ env:
 - FIREHOSE_EVENTS_ANALYTICS_PIPELINE_JOB_RUNS
 dependencies:
 - gearman-admin
-team: eng-ip
+team: eng-deip
 resources:
   cpu: 0.05
   max_mem: 0.05
