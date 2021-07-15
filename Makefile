@@ -3,14 +3,15 @@ include sfncli.mk
 .DEFAULT_GOAL := test
 
 SHELL := /bin/bash
-PKG := github.com/Clever/s3-to-redshift
+PKG := github.com/Clever/s3-to-redshift/v3
 PKGS := $(shell go list ./... | grep -v /vendor)
-EXECUTABLE := $(shell basename $(PKG))
+APP_NAME ?= s3-to-redshift
+EXECUTABLE = $(APP_NAME)
 SFNCLI_VERSION := latest
 
 .PHONY: test $(PKGS) run install_deps build
 
-$(eval $(call golang-version-check,1.12))
+$(eval $(call golang-version-check,1.13))
 
 # variables for testing
 export GEARMAN_ADMIN_PATH ?= x
@@ -52,5 +53,5 @@ run: build
 		--workername `hostname` \
 		--cmd bin/$(EXECUTABLE)
 
-install_deps: golang-dep-vendor-deps
-	$(call golang-dep-vendor)
+install_deps:
+	go mod vendor

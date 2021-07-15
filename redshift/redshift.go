@@ -20,8 +20,8 @@ import (
 	// See https://github.com/Clever/pq/pull/1
 	"github.com/Clever/pq"
 
-	"github.com/Clever/s3-to-redshift/logger"
-	"github.com/Clever/s3-to-redshift/s3filepath"
+	"github.com/Clever/s3-to-redshift/v3/logger"
+	"github.com/Clever/s3-to-redshift/v3/s3filepath"
 )
 
 type dbExecCloser interface {
