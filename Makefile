@@ -5,7 +5,8 @@ include sfncli.mk
 SHELL := /bin/bash
 PKG := github.com/Clever/s3-to-redshift/v3
 PKGS := $(shell go list ./... | grep -v /vendor)
-EXECUTABLE := $(shell basename $(PKG))
+APP_NAME ?= s3-to-redshift
+EXECUTABLE = $(APP_NAME)
 SFNCLI_VERSION := latest
 
 .PHONY: test $(PKGS) run install_deps build
