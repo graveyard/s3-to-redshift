@@ -3,7 +3,7 @@ include sfncli.mk
 .DEFAULT_GOAL := test
 
 SHELL := /bin/bash
-PKG := github.com/Clever/s3-to-redshift
+PKG := github.com/Clever/s3-to-redshift/v3
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE := $(shell basename $(PKG))
 SFNCLI_VERSION := latest
@@ -52,5 +52,5 @@ run: build
 		--workername `hostname` \
 		--cmd bin/$(EXECUTABLE)
 
-install_deps: golang-dep-vendor-deps
-	$(call golang-dep-vendor)
+install_deps:
+	go mod vendor

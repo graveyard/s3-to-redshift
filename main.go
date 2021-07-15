@@ -16,9 +16,9 @@ import (
 
 	"github.com/Clever/analytics-util/analyticspipeline"
 	discovery "github.com/Clever/discovery-go"
-	"github.com/Clever/s3-to-redshift/logger"
-	redshift "github.com/Clever/s3-to-redshift/redshift"
-	s3filepath "github.com/Clever/s3-to-redshift/s3filepath"
+	"github.com/Clever/s3-to-redshift/v3/logger"
+	redshift "github.com/Clever/s3-to-redshift/v3/redshift"
+	s3filepath "github.com/Clever/s3-to-redshift/v3/s3filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"

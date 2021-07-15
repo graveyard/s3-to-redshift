@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Clever/s3-to-redshift/s3filepath"
+	"github.com/Clever/s3-to-redshift/v3/s3filepath"
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
