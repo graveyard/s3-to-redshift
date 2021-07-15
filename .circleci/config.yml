@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/Clever/s3-to-redshift
     docker:
-    - image: circleci/golang:1.12-stretch
+    - image: circleci/golang:1.13-stretch
     environment:
       GOPRIVATE: github.com/Clever/*
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
