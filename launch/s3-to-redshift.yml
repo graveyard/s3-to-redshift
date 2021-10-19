@@ -35,6 +35,6 @@ autoscaling:
 pod_config:
   dev:
     migrationState: podOnly
-  group: us-west-1
+  group: us-west-2
   prod:
     migrationState: homepod
