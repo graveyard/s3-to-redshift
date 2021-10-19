@@ -17,8 +17,8 @@ dependencies:
 - gearman-admin
 team: eng-deip
 resources:
-  cpu: 0.05
-  max_mem: 0.05
+  cpu: 0.25
+  max_mem: 0.5
 aws:
   custom: true
   managed:
@@ -26,9 +26,15 @@ aws:
     - Workflows
   s3:
     read:
-      - long-term-metrics
+    - long-term-metrics
 autoscaling:
   metric: active-percent
   metric_target: 70
   min_count: 2
   max_count: 4
+pod_config:
+  dev:
+    migrationState: podOnly
+  group: us-west-2
+  prod:
+    migrationState: homepod
