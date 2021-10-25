@@ -33,8 +33,4 @@ autoscaling:
   min_count: 2
   max_count: 4
 pod_config:
-  dev:
-    migrationState: podOnly
   group: us-west-2
-  prod:
-    migrationState: podOnly
