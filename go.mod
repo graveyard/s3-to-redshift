@@ -1,6 +1,6 @@
 module github.com/Clever/s3-to-redshift/v3
 
-go 1.13
+go 1.16
 
 require (
 	github.com/Clever/analytics-util v0.0.0-20200128215605-555aff11c52e
