@@ -33,7 +33,7 @@ autoscaling:
   min_count: 2
   max_count: 4
 pod_config:
-  group: us-west-2
+  group: us-west-1
 deploy_config:
   canaryInProd: false
   autoDeployEnvs:
