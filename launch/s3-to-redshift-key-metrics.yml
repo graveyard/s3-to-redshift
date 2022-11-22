@@ -33,3 +33,6 @@ deploy_config:
   canaryInProd: false
   autoDeployEnvs:
   - production
+mesh_config:
+  dev:
+    state: mesh_only
