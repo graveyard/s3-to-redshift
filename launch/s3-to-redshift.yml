@@ -41,3 +41,5 @@ deploy_config:
 mesh_config:
   dev:
     state: mesh_only
+  prod:
+    state: mesh_only
