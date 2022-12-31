@@ -114,3 +114,4 @@ go run cmd/main.go -schema=api_hits -tables=pages,sessions \
 ## Vendoring
 
 Please view the [dev-handbook for instructions](https://github.com/Clever/dev-handbook/blob/master/golang/godep.md).
+test
